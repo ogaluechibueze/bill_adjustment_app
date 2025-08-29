@@ -1,0 +1,71 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CCRO
+  CCO
+  CAO
+  MD
+}
+
+enum Status {
+  Pending
+  Approved
+  Rejected
+}
+
+enum Stage {
+  CCRO
+  CCO
+  CAO
+  MD
+}
+
+model User {
+  id        Int        @id @default(autoincrement())
+  email     String     @unique
+  username  String     @unique
+  password  String
+  role      Role
+  active    Boolean    @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  customers Customer[] @relation("CreatedBy")
+}
+
+model Customer {
+  id                      Int       @id @default(autoincrement())
+  globalAcctNo            String
+  customerName            String
+  region                  String?
+  businessUnit            String?
+  band                    String?
+  feederName              String?
+  source                  String?
+  ticketNo                String?
+  initialDebt             Decimal?  @db.Decimal(12,2)
+  adjustmentAmount        Decimal?  @db.Decimal(12,2)
+  balanceAfterAdjustment  Decimal?  @db.Decimal(12,2)
+  adjustmentStartDate     DateTime?
+  adjustmentEndDate       DateTime?
+  ccroremarks             String?
+  ccoremarks              String?
+  caoremarks              String?
+  mdremarks               String?
+  status                  Status    @default(Pending)
+  approvalStage           Stage     @default(CCO)
+
+  // ✅ Must always store the user who created this record
+  createdById             Int?
+  createdBy               User?      @relation("CreatedBy", fields: [createdById], references: [id])
+
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+}

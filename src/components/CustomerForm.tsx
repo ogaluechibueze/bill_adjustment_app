@@ -1,0 +1,302 @@
+"use client";
+
+import { useState } from "react";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm, Controller } from "react-hook-form";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Loader2, Save } from "lucide-react";
+import Select from "react-select";
+
+// ✅ Validation schema
+const formSchema = z.object({
+  globalAcctNo: z.string().min(3, "Global Account No is required"),
+  customerName: z.string().min(3, "Customer name is required"),
+  region: z.string().optional(),
+  type: z.string().optional(),
+  businessUnit: z.string().optional(),
+  band: z.string().optional(),
+  feederName: z.string().optional(),
+  source: z.string().optional(),
+  ticketNo: z.string().optional(),
+  initialDebt: z.string().optional(),
+  adjustmentAmount: z.string().optional(),
+  adjustmentStartDate: z.string().optional(),
+  adjustmentEndDate: z.string().optional(),
+  ccroremarks: z.string().optional(),
+});
+
+// ✅ Options
+const regions = ["AKURE", "ASABA", "AUCHI", "BENIN NORTH", "BENIN SOUTH", "EKITI", "ONDO", "SAPELE", "WARRI"];
+
+const types = ["NON MD UNMETERED", "NON MD METERED", "MD METERED", "MD UNMETERED"];
+
+const businessUnits = [   "GRA", "ETETE", "SOKPONBA", "EVBUOTUBU", "EVBUORIARIA", "UGBOWO", "UROMI", "AUCHI",
+                            "IKPOBA HILL", "OBIARUKU", "WARRI", "SAPELE", "ONDO", "AGBOR", "ADO-EKITI", "IDO-EKITI",
+                            "OKADA", "KOKA", "ASABA", "AKURE", "UGHELLI", "UDU", "OWO", "PTI", "IGBARA-OKE",
+                            "AKOKO", "OGHARA", "EFFURUN", "OKITIPUPA"
+                        ];
+
+const bands = ["A", "B", "C", "D","E"];
+  
+const feeders = [
+                    "33 Direct","ABAVO","ABBI TOWN","ABIGBORODO","ABRAKA COMMERCIAL","ABRAKA LB","ABRAKA MD LB","ABRAKA TOWN","ABUDU-OGHADA","ADEBAYO",
+                    "ADEJE","ADEJE LB","ADEYEMI","ADUWAWA","AFAO (IKERE 2)","AFIESERE","AFOKPELLA","AFOR TOWN","AFRICA-HOUSE","AFUZE TOWNSHIP",
+                    "AGAGA LAYOUT","AGBARHA","AGBARHO TOWN","AGBARHO/EKU LB","AGBEDE","AGBOR TOWN","AGBOR-OBI","AGENEBODE TOWN","AGESIN-IKERE LB","AGRIC/OLOPE",
+                    "AIRPORT (COMMERCIAL)","AIRPORT COMM","AIRPORT ROAD","AJAMIMOGHA","AJEGUNLE","AJILOSUN","AKENBOR","AKPAKPAVA COMMERCIAL","AKUGBA","AKURE-COMMERCIAL",
+                    "AKWUKWU-IGBO","ALADJA","ALAGBAKA","ALIFIKEDE","AMAI TOWN","AMAI TOWN - UROMI","AMAUDO TOWN","AMUFI-COMMERCIAL","AMUKPE COMMERCIAL","AMUKPE LOCAL",
+                    "AMUKPE TOWN","ANDREW-WILSON","ANWAI","ARMY BARRACK","ARMY BARRACK (OWENA)","ARMY BARRACK AGENEBODE","ARMY BARRACK -AUCHI","ARMY BARRACKS OKITIPUPA","ARMY/IKPESHI LB","ARUE TOWNSHIP",
+                    "ARUOGBA","ASABA AIRPORT","ASABA ALLUMINIUM","ASABA -COMMERCIAL","ASABA ROAD","ASIN","ASORO","AT&P","ATANI","AUCHI TOWN",
+                    "AUCHI TOWN COMMERCIAL","AVENUE COMMERCIAL","AVIELE","AWOYEMI","AYEDUN","AYEE","AYEE/IRESE","AYOGWIRI","BASIRI","BDPA",
+                    "BENDEL ESTATE","BENIN OWENA","BIU","CABINET","CAMPUS 1","CAMPUS 2","CAMPUS 3","CBN","COLLEGE ROAD","COMMUNITY ROAD",
+                    "COSTAIN","COUNTRY HOME","Dam","DSC","DUMEZ","DUMEZ ROAD","dummy","EASTERN METAL","EBOH-COMMERCIAL","ECN",
+                    "EDJEBA","EDJOPHE","EDO-TEX","EGBA","EGOR","EGORO","EGUADAIKEN","EKAE","EKEHUAN CAMPUS","EKENWAN","EKENWAN BARRACK","EKETE","EKIADOLOR","EKPAN TOWN","EKPOMA TOWN","EKU TOWN","EKUKU-AGBOR",
+                    "ELIZADE UNIVERSITY","EL-SHADDAI","EME-ORA","EMIYE","ENERHEN LB","ENWAN","ERAA","ERINJE","ERIO LB","ESTATE","ESTATE-COMMERCIAL","ETERNIT","EVBUOABUOGUN","EVBUOTUBU","EVBUOTUBU LB","EXPRESS (AGBOR)",
+                    "EXPRESS (AKURE)","EXPRESS (UGHELLI)","EXPRESS UROMI","EXPRESS-ASABA","EZENEI","FACTORY 1","FACTORY 2","FACTORY 3","FACTORY ROAD","FARM SETTLEMENT","FED. POLY","FEDERAL SECRETARIATE COMMERCIAL","FEEDER 1",
+                    "FEEDER 2","FEEDER 3","FEEDER 4","FGGC","FLOUR MILL","FUGAR TOWN","FUPRE","GANA","GARAGE (IKERE 1)","GOVERNANCE VILLA","GOVERNOR","GOVT. HOUSE","GOVT. HOUSE ADO","GRA","GRA (WARRI)","GRA-AUCHI",
+                    "GRA-COMMERCIAL","GSM","GUINNESS FACTORY","HOUSING COMPLEX","IBILLO","IBUSA BY-PASS","IBUZOR","IDANRE ROAD","IDANRE TOWN","IDSL COMMERCIAL","IDUMUJE-UGBOKO","IFON","IGARA TOWN","IGBANKE","IGBATORO","IGBE ROAD",
+                    "IGBEDE","IGBIDI","IGBOKODA","IGEDE","IGIEDUMA COMMUNITY","IGODAN","IGUOBAZUWA","IGUOSA","IHAMA","IHOVBOR","IJAPO","IJARE/IGBARA OKE LB","IJERO TOWN","IJIGBO COMMERCIAL","IJOKA","IJU LB","IJU/ITAOGBOLU TOWNSHIP",
+                    "IKARE","IKHUENIRO","IKOGOSI LB","IKOTA","IKPOBA-HILL-COMMERCIAL","ILE-OLUJI","ILESHA ROAD","ILLAH","ILUTITUN","IMMONIAME","INDUSTRIAL COMMERCIAL","INDUSTRIALTIED TO GANA","IRESE","IRRI","IRRUA","IRUEKPEN","ISE/EMURE",
+                    "ISELE ASAGBA","ISELE-MKPITIME","Iselle Azagba","ISINKAN","ISOKO ROAD","ISOKO/KWALE LB","ISSELE MPIKTIME (NOT YET COMMISSIONED)","ISSELE-UKU","ISTH","ISUADA","IVIOGHE","IYANOMO RUBBER RESEACH","IYOWA","JAGBE","JAKPA ROAD",
+                    "JAMES HOPE COMMERCIAL","JATTU","JEDO","JEHOVAH'S WITNESS COMPLEX","KOKA COMMERCIAL","KOKO","KOKO TOWN","KOKO-LB","KOROBE","KWALE EXPRESS","KWALE TOWN","LAMPESE","LEVENTIS","LEVENTIS FARM","Limit Road Commercial","LUJOMU LB",
+                    "MARBLE HILL","MARIA GORRETI","MARKET (IGBOKODA)","MARKET ROAD (ONDO)","MARKET ROAD (WARRI)","MBH COMMERCIAL","Mc DERMOTT","MD COMMERCIAL","MEDICAL VILLAGE","MICHELLIN","MIX&BAKE -VIO -COMMERCIAL","MOSOGAR","MOSOGAR LB",
+                    "NAVAL BASE","NDC","NDC TIED TO EXPRESS UGHELLI","NDDC","NDDC IGBOKODA","NEW BENIN","NEW-AUCHI","NGC","NICOHO BARRACK","NIFOR","OBA-ILE","OBA-KEKERE","OBA-NLA","OBA-PALACE","OBAYANTOR","OBIARUKU TOWN","OBINOBA (TIED TO OBIARUKU)",
+                    "OBULUKU","ODA","ODE-AYE LB","ODO-ADO","ODOJOMU","OGBA","OGBEKNU-UMUOLO","OGBONA","Oghara Commercial","OGHARA TOWN LB","OGORODE TOWN","OGUNU ROAD","OGWA-EBELE","OGWASHI-UKU","OGWASHI-UKU COMMERCIAL","OHA","OJIRAMI DAM","OKA",
+                    "OKADA","OKE-EDA","OKE-IGBO/IFETEDO LB","OKESHA","OKHORO","Okhoro/Iyayi","OKO","OKOMU","Okotomi","OKPANAM COMMERCIAL","OKPARA INLAND","OKPE","OKPORIE","OKUREKPO","OKWE","OLAM","OLD ROAD","OLEH","OLIHA","OLOGBO","OLOMORO",
+                    "OLUKU LB","OLUKU-COMMERCIAL","OMUO LB","ONDO ROAD","ONICHA-UKU","OPOJI","OREROKPE TOWN","ORHUWHORUN ROAD","ORIE","OSADENNIS","OSUTECH","OTEFE","OTE-OKPU","OTERI","OTOVWODO/PATANI LB","OTUO","OUR LADY'S","OVA","OVA TIED TO EGOR",
+                    "OVWODOKPOKPO","OWA","OWA-ALERO","OWA-IYIBO","OWENA LB","OWENA/ILE-OLUJI LB","OWHELOGBO","OWO COMMERCIAL","OWO TOWN","OYE TOWN","OYEARUGBULEN","OYEMEKUN","PALACE","PIEDMONT","POLY","PPMC","PRODESCO","PS -COMMERCIAL","PTI ROAD",
+                    "PTI SCHOOL","RADIO BENDEL","REFINERY 1 LB","RESERVATION","RIVER SIDE","ROYAL - COMMERCIAL","SAPELE (EFFURUN) LB","SAPELE 33KV LB","SAPELE ROAD","SAPELE/WARRI ROAD","SCHOOL OF EME","SCHOOL-COMMERCIAL","SHELL ROAD","SHOPRITE (ASABA)",
+                    "SILUKO","SIO","SOUTH-IBIE","SPC","Specialist","ST. SAVIOUR","STANMARK","SUPER BRU","TEACHER TRAINING COMMERCIAL","TISCO","TOWN","TOWNSHIP","TOWNSHIP (ASABA)","TOWNSHIP-OKITIPUPA","UBEJI","UBIAJA ROAD","UBIAJA TOWN (2.5)","UBTH",
+                    "UBULU-OKITI","UDU ROAD","UGBE","UGBOR","UGBORIKOKO","UGBOROKE","UGBOWO","UJAVUN TOWN","UJEMEN -COMMERCIAL","UMUNEDE","UMUTU","UNAD","UNIBEN","UNIBEN COMMERCIAL","UNIBEN EKENWAN","UNIBEN II","UNITY FH","UNIVERSITY","UPPER LAWANI",
+                    "UPPER MISSION","UPPER OWINA","UPPER SAPELE","UPPER SILUKO","UPPER SOKPONBA","URHUOKOSA","UROMI TOWN","USELU","USEN","Uteh 1","Uteh 2","UWANHUMI","UWELU","UZERE","WARRAKE","YABA-COMMERCIAL"
+                ];
+
+type CustomerFormData = z.infer<typeof formSchema>;
+
+export default function CustomerForm() {
+  const {
+    register,
+    handleSubmit,
+    reset,
+    watch,
+    control,
+    formState: { errors, isSubmitting },
+  } = useForm<CustomerFormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      globalAcctNo: "",
+      customerName: "",
+      region: "",
+      type: "",
+      businessUnit: "",
+      band: "",
+      feederName: "",
+      source: "",
+      ticketNo: "",
+      initialDebt: "",
+      adjustmentAmount: "",
+      adjustmentStartDate: "",
+      adjustmentEndDate: "",
+      ccroremarks: "",
+    },
+  });
+
+  const initialDebt = Number(watch("initialDebt") || 0);
+  const adjustmentAmount = Number(watch("adjustmentAmount") || 0);
+  const balance = initialDebt - adjustmentAmount;
+
+  async function onSubmit(data: CustomerFormData) {
+    // Include balanceAfterAdjustment in payload
+    const payload = { ...data, balanceAfterAdjustment: balance };
+    try {
+      const res = await fetch("/api/adjustments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        alert("Submitted ✅");
+        reset();
+      } else {
+        alert("❌ Error submitting");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("⚠️ Network error");
+    }
+  }
+
+  // Helper function to generate react-select options
+  const toOptions = (arr: string[]) => arr.map((v) => ({ label: v, value: v }));
+
+  return (
+    <Card className="max-w-3xl mx-auto p-6 shadow-lg rounded-2xl">
+      <CardHeader>
+        <CardTitle className="text-xl font-bold text-center">
+          Bill Adjustment Form
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          <div className="grid md:grid-cols-2 gap-4">
+            {[
+              ["globalAcctNo", "Global Account No"],
+              ["customerName", "Customer Name"],
+              ["source", "Source"],
+              ["ticketNo", "Ticket No"],
+            ].map(([k, label]) => (
+              <div key={k} className="space-y-1">
+                <Label>{label}</Label>
+                <Input {...register(k as keyof CustomerFormData)} />
+                {errors[k as keyof CustomerFormData] && (
+                  <p className="text-sm text-red-500">
+                    {errors[k as keyof CustomerFormData]?.message as string}
+                  </p>
+                )}
+              </div>
+            ))}
+
+            {/* Dropdowns using react-select */}
+            <Controller
+              name="region"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-1">
+                  <Label>Region</Label>
+                  <Select
+                    options={toOptions(regions)}
+                    value={toOptions(regions).find((o) => o.value === field.value)}
+                    onChange={(val) => field.onChange(val?.value)}
+                    isSearchable
+                  />
+                </div>
+              )}
+            />
+
+            <Controller
+              name="type"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-1">
+                  <Label>Type</Label>
+                  <Select
+                    options={toOptions(types)}
+                    value={toOptions(types).find((o) => o.value === field.value)}
+                    onChange={(val) => field.onChange(val?.value)}
+                    isSearchable
+                  />
+                </div>
+              )}
+            />
+
+            <Controller
+              name="businessUnit"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-1">
+                  <Label>Business Unit</Label>
+                  <Select
+                    options={toOptions(businessUnits)}
+                    value={toOptions(businessUnits).find((o) => o.value === field.value)}
+                    onChange={(val) => field.onChange(val?.value)}
+                    isSearchable
+                  />
+                </div>
+              )}
+            />
+
+            <Controller
+              name="band"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-1">
+                  <Label>Band</Label>
+                  <Select
+                    options={toOptions(bands)}
+                    value={toOptions(bands).find((o) => o.value === field.value)}
+                    onChange={(val) => field.onChange(val?.value)}
+                    isSearchable
+                  />
+                </div>
+              )}
+            />
+
+            <Controller
+              name="feederName"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-1">
+                  <Label>Feeder</Label>
+                  <Select
+                    options={toOptions(feeders)}
+                    value={toOptions(feeders).find((o) => o.value === field.value)}
+                    onChange={(val) => field.onChange(val?.value)}
+                    isSearchable
+                  />
+                </div>
+              )}
+            />
+
+            <div className="space-y-1">
+              <Label>Initial Debt</Label>
+              <Input type="number" {...register("initialDebt")} />
+            </div>
+
+            <div className="space-y-1">
+              <Label>Adjustment Amount</Label>
+              <Input type="number" {...register("adjustmentAmount")} />
+            </div>
+
+            <div className="space-y-1">
+              <Label>Balance After Adjustment</Label>
+              <Input value={balance} disabled />
+            </div>
+
+            <div className="space-y-1">
+              <Label>Adjustment Start Date</Label>
+              <Input type="date" {...register("adjustmentStartDate")} />
+            </div>
+
+            <div className="space-y-1">
+              <Label>Adjustment End Date</Label>
+              <Input type="date" {...register("adjustmentEndDate")} />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label>CCRO Remarks</Label>
+            <Textarea rows={3} {...register("ccroremarks")} />
+          </div>
+
+          <Button
+            type="submit"
+            className="w-full flex items-center justify-center"
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Submitting…
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Submit
+              </>
+            )}
+          </Button>
+        </form>
+      </CardContent>
+    </Card>
+  );
+}
