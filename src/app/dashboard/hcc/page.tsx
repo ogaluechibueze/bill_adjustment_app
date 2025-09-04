@@ -5,12 +5,12 @@ import { getServerSession } from "next-auth";
 
 export default async function Page() {
   const session = await getServerSession(authOptions);
-  if (!session || (session as any).user.role !== "MD") {
-    return <div className="card">MANAGING DIRECTOR FINAL APPROVAL DASHBOARD</div>;
+  if (!session || (session as any).user.role !== "HCC") {
+    return <div className="card">Head Customer Care Unit Dashboard</div>;
   }
 
   const items = await prisma.customer.findMany({
-    where: { approvalStage: "MD", status: "Pending" },
+    where: { approvalStage: "HCC", status: "Pending" },
     orderBy: { createdAt: "desc" },
     include: {
       createdBy: { select: { username: true } },
@@ -23,7 +23,7 @@ export default async function Page() {
   return (
     <div className="ml-55 w-4/5 pt-12"> 
       {/* ml-6 = move right a bit, w-4/5 = 80% width */}
-      <CustomerTable data={safeItems} role="MD" />
+      <CustomerTable data={safeItems} role="HCC" />
     </div>
   );
 }

@@ -9,9 +9,14 @@ datasource db {
 
 enum Role {
   CCRO
-  CCO
-  CAO
+  HCC
+  BM
+  RH
+  RA
+  IA
+  CIA
   MD
+  ADMIN
 }
 
 enum Status {
@@ -22,30 +27,38 @@ enum Status {
 
 enum Stage {
   CCRO
-  CCO
-  CAO
+  HCC
+  BM
+  RH
+  RA
+  IA
+  CIA
   MD
 }
 
 model User {
-  id        Int        @id @default(autoincrement())
-  email     String     @unique
-  username  String     @unique
-  password  String
-  role      Role
-  active    Boolean    @default(true)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id                    Int        @id @default(autoincrement())
+  email                 String     @unique
+  username              String     @unique
+  password              String
+  role                  Role
+  bussinessUnit         String
+  region                String     
+  active                Boolean    @default(true)
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
 
   customers Customer[] @relation("CreatedBy")
 }
 
 model Customer {
   id                      Int       @id @default(autoincrement())
-  globalAcctNo            String
+  globalAcctNo            String    @unique
   customerName            String
   region                  String?
   businessUnit            String?
+  customerType            String?
+  meterNumber             String?
   band                    String?
   feederName              String?
   source                  String?
@@ -56,11 +69,15 @@ model Customer {
   adjustmentStartDate     DateTime?
   adjustmentEndDate       DateTime?
   ccroremarks             String?
-  ccoremarks              String?
-  caoremarks              String?
+  hccremarks              String?
+  bmremarks               String?
+  rhremarks               String?
+  raremarks               String?
+  iaremarks               String?
+  ciaremarks              String?
   mdremarks               String?
   status                  Status    @default(Pending)
-  approvalStage           Stage     @default(CCO)
+  approvalStage           Stage     @default(HCC)
 
   // ✅ Must always store the user who created this record
   createdById             Int?
@@ -68,4 +85,23 @@ model Customer {
 
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
+}
+
+model FeederConsumption {
+  id            Int       @id @default(autoincrement())
+  feederName    String
+  month         Int       // 1 = January, 2 = February ...
+  year          Int
+  consumption   Float     // Units consumed (kWh or whatever unit you use)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Tariff {
+  id        Int      @id @default(autoincrement())
+  feederName String
+  band      String   // A, B, C, D, E
+  month     Int
+  year      Int
+  rate      Float    // Tariff per unit (₦)
 }

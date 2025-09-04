@@ -5,9 +5,13 @@ import { prisma } from "@/lib/prisma";
 import { Stage, Status } from "@prisma/client";
 
 const nextStageMap: Record<Stage, Stage | null> = {
-  CCRO: Stage.CCO,
-  CCO: Stage.CAO,
-  CAO: Stage.MD,
+  CCRO: Stage.HCC,
+  HCC: Stage.BM,
+  BM: Stage.RH,
+  RH: Stage.RA,
+  RA: Stage.IA,
+  IA: Stage.CIA,
+  CIA: Stage.MD,
   MD: null,
 };
 
@@ -47,9 +51,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   // ✅ Map role → remarks field
   const remarksFieldMap: Record<Stage, keyof typeof item> = {
     CCRO: "ccroremarks",
-    CCO: "ccoremarks",
-    CAO: "caoremarks",
-    MD: "mdremarks",
+    HCC:  "hccremarks",
+    BM:   "bmremarks",
+    RH:   "rhremarks",
+    RA:   "raremarks",
+    IA:   "iaremarks",
+    CIA:  "ciaremarks",
+    MD:   "mdremarks",
   };
 
   const remarksField = remarksFieldMap[role];

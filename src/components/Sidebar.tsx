@@ -10,10 +10,14 @@ interface SidebarProps {
 }
 
 const roleRoutes: Record<string, string> = {
-  CCRO: "/dashboard/ccro",
-  CCO: "/dashboard/cco",
-  CAO: "/dashboard/cao",
-  MD: "/dashboard/md",
+    CCRO: "/dashboard/ccro",
+    HCC:  "/dashboard/hcc",
+    BM:   "/dashboard/bm",
+    RH:   "/dashboard/rh",
+    RA:   "/dashboard/ra",
+    IA:   "/dashboard/ia",
+    CIA:  "/dashboard/cia",
+    MD:   "/dashboard/md",
 };
 
 export default function Sidebar({ role }: SidebarProps) {

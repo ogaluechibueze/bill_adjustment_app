@@ -63,7 +63,7 @@ export async function POST(req: Request) {
           : null,
         ccroremarks: body.ccroremarks ?? null,
         status: "Pending",
-        approvalStage: "CCO",
+        approvalStage: "HCC",
         createdById: userId, // 👈 now correctly saved from session
       },
       include: {

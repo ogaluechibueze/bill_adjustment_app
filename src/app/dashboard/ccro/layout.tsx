@@ -6,8 +6,8 @@ const inter = Inter({ subsets: ["latin"] });
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <body >
+    
+      <div className={`${inter.className} bg-gray-50 text-gray-900 font-sans`} suppressHydrationWarning>
         {/* Navbar fixed at top */}
         <Navbar />
 
@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <main className="container mx-auto px-4 pt-20 pb-10">
           {children}
         </main>
-      </body>
-    </html>
+      </div>
+    
   );
 }

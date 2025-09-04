@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import dynamic from "next/dynamic";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm, Controller } from "react-hook-form";
@@ -15,7 +15,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Loader2, Save } from "lucide-react";
-import Select from "react-select";
+import { AccountSelect } from "../lib/types";
+
+
+const AsyncCreatableSelect = dynamic(
+  () => import("react-select/async-creatable"),
+  { ssr: false }
+);
+
+const Select = dynamic(() => import("react-select"), { ssr: false });
 
 // ✅ Validation schema
 const formSchema = z.object({
@@ -35,7 +43,7 @@ const formSchema = z.object({
   ccroremarks: z.string().optional(),
 });
 
-// ✅ Options
+// ✅ Dropdown options
 const regions = ["AKURE", "ASABA", "AUCHI", "BENIN NORTH", "BENIN SOUTH", "EKITI", "ONDO", "SAPELE", "WARRI"];
 
 const types = ["NON MD UNMETERED", "NON MD METERED", "MD METERED", "MD UNMETERED"];
@@ -82,6 +90,8 @@ const feeders = [
 
 type CustomerFormData = z.infer<typeof formSchema>;
 
+
+
 export default function CustomerForm() {
   const {
     register,
@@ -114,8 +124,8 @@ export default function CustomerForm() {
   const adjustmentAmount = Number(watch("adjustmentAmount") || 0);
   const balance = initialDebt - adjustmentAmount;
 
+  // ✅ Submit handler
   async function onSubmit(data: CustomerFormData) {
-    // Include balanceAfterAdjustment in payload
     const payload = { ...data, balanceAfterAdjustment: balance };
     try {
       const res = await fetch("/api/adjustments", {
@@ -136,8 +146,60 @@ export default function CustomerForm() {
     }
   }
 
-  // Helper function to generate react-select options
+  // ✅ Helper to convert to react-select options
   const toOptions = (arr: string[]) => arr.map((v) => ({ label: v, value: v }));
+
+  // ✅ Load accounts from backend
+  const loadAccounts = async (inputValue: string) => {
+    if (!inputValue) return [];
+    try {
+      const res = await fetch(`/api/customers/search?query=${inputValue}`);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return data.map((c: any) => ({
+        label: `${c.globalAcctNo} - ${c.customerName}`,
+        value: c.globalAcctNo,
+        customer: c,
+      }));
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  };
+
+  // ✅ When user selects an account → auto fill
+  const handleAccountSelect = (selected: any) => {
+  if (!selected) return;
+
+  // Always keep globalAcctNo
+  const acctNo = selected.value;
+
+  if (selected.customer) {
+    const customer = selected.customer;
+    reset({
+      globalAcctNo: acctNo,
+      customerName: customer.customerName ?? "",
+      region: customer.region ?? "",
+      type: customer.customerType ?? "",
+      businessUnit: customer.businessUnit ?? "",
+      band: customer.band ?? "",
+      feederName: customer.feederName ?? "",
+      source: customer.source ?? "",
+      ticketNo: customer.ticketNo ?? "",
+      initialDebt: customer.initialDebt?.toString() ?? "",
+      adjustmentAmount: customer.adjustmentAmount?.toString() ?? "",
+      adjustmentStartDate: customer.adjustmentStartDate ?? "",
+      adjustmentEndDate: customer.adjustmentEndDate ?? "",
+      ccroremarks: customer.ccroremarks ?? "",
+    });
+  } else {
+    // If no customer (new account), just set the account number
+    reset((prev) => ({
+      ...prev,
+      globalAcctNo: acctNo,
+    }));
+  }
+};
 
   return (
     <Card className="max-w-3xl mx-auto p-6 shadow-lg rounded-2xl">
@@ -149,8 +211,39 @@ export default function CustomerForm() {
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="grid md:grid-cols-2 gap-4">
+            {/* ✅ Global Account No Search */}
+            <div className="space-y-1">
+              <Label>Global Account No</Label>
+              <Controller
+                name="globalAcctNo"
+                control={control}
+                render={({ field }) => (
+                  <AsyncCreatableSelect
+                    cacheOptions
+                    defaultOptions
+                    loadOptions={loadAccounts}
+                    onChange={(val) => {
+                      field.onChange(val?.value);
+                      handleAccountSelect(val);
+                    }}
+                    value={
+                      field.value
+                        ? { label: field.value, value: field.value }
+                        : null
+                    }
+                    isClearable
+                    placeholder="Enter Account Number..."
+                    formatCreateLabel={(inputValue) => `Use "${inputValue}" as new account`}
+                  />
+                )}
+              />
+              {errors.globalAcctNo && (
+                <p className="text-sm text-red-500">{errors.globalAcctNo.message}</p>
+              )}
+            </div>
+
+            {/* Text inputs */}
             {[
-              ["globalAcctNo", "Global Account No"],
               ["customerName", "Customer Name"],
               ["source", "Source"],
               ["ticketNo", "Ticket No"],
@@ -166,13 +259,14 @@ export default function CustomerForm() {
               </div>
             ))}
 
-            {/* Dropdowns using react-select */}
+            {/* Dropdowns */}
             <Controller
               name="region"
               control={control}
               render={({ field }) => (
                 <div className="space-y-1">
                   <Label>Region</Label>
+                  
                   <Select
                     options={toOptions(regions)}
                     value={toOptions(regions).find((o) => o.value === field.value)}
@@ -247,6 +341,7 @@ export default function CustomerForm() {
               )}
             />
 
+            {/* Number + Dates */}
             <div className="space-y-1">
               <Label>Initial Debt</Label>
               <Input type="number" {...register("initialDebt")} />
@@ -273,6 +368,7 @@ export default function CustomerForm() {
             </div>
           </div>
 
+          {/* Remarks */}
           <div className="space-y-1">
             <Label>CCRO Remarks</Label>
             <Textarea rows={3} {...register("ccroremarks")} />

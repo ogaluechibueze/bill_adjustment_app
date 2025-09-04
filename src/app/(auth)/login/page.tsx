@@ -64,14 +64,29 @@ export default function LoginPage() {
       case "CCRO":
         router.push("/dashboard/ccro");
         break;
-      case "CCO":
-        router.push("/dashboard/cco");
+      case "HCC":
+        router.push("/dashboard/hcc");
         break;
-      case "CAO":
-        router.push("/dashboard/cao");
+      case "BM":
+        router.push("/dashboard/bm");
+        break;
+      case "RH":
+        router.push("/dashboard/rh");
+        break;
+      case "RA":
+        router.push("/dashboard/ra");
+        break;
+      case "IA":
+        router.push("/dashboard/ia");
+        break;
+      case "CIA":
+        router.push("/dashboard/cia");
         break;
       case "MD":
         router.push("/dashboard/md");
+        break;
+      case "ADMIN":
+        router.push("/dashboard/admin");
         break;
       default:
         router.push("/");

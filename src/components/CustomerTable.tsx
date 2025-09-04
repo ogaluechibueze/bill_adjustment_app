@@ -1,4 +1,4 @@
-"use client";
+"use client"
 
 import { FC, useState, useTransition } from "react";
 import { Customer } from "@prisma/client";
@@ -80,25 +80,29 @@ export function toSafeCustomers(
 
 // 🔎 Zod schema for readonly view/edit
 const viewSchema = z.object({
-  globalAcctNo: z.string().nullable(),
-  customerName: z.string().nullable(),
-  region: z.string().nullable(),
-  businessUnit: z.string().nullable(),
-  band: z.string().nullable(),
-  feederName: z.string().nullable(),
-  source: z.string().nullable(),
-  ticketNo: z.string().nullable(),
-  initialDebt: z.number().nullable(),
-  adjustmentAmount: z.number().nullable(),
-  balanceAfterAdjustment: z.number().nullable(),
-  adjustmentStartDate: z.string().nullable(),
-  adjustmentEndDate: z.string().nullable(),
-  ccroremarks: z.string().nullable(),
-  ccoremarks: z.string().nullable(),
-  caoremarks: z.string().nullable(),
-  mdremarks: z.string().nullable(),
-  status: z.string().nullable(),
-  approvalStage: z.string().nullable(),
+  globalAcctNo: z.string().nullable().describe("Account Number"),
+  customerName: z.string().nullable().describe("Customer Name"),
+  region: z.string().nullable().describe("Region"),
+  businessUnit: z.string().nullable().describe("Business Unit"),
+  band: z.string().nullable().describe("Band"),
+  feederName: z.string().nullable().describe("Feeder Name"),
+  source: z.string().nullable().describe("Source"),
+  ticketNo: z.string().nullable().describe("Ticket Number"),
+  initialDebt: z.number().nullable().describe("Initial Debt"),
+  adjustmentAmount: z.number().nullable().describe("Adjustment Amount"),
+  balanceAfterAdjustment: z.number().nullable().describe("Balance After Adjustment"),
+  adjustmentStartDate: z.string().nullable().describe("Adjustment Start Date"),
+  adjustmentEndDate: z.string().nullable().describe("Adjustment End Date"),
+  ccroremarks: z.string().nullable().describe("CCRO Remarks"),
+  hccremarks: z.string().nullable().describe("HCC Remarks"),
+  bmremarks: z.string().nullable().describe("BM Remarks"),
+  rhremarks: z.string().nullable().describe("RH Remarks"),
+  raremarks: z.string().nullable().describe("RA Remarks"),
+  iaremarks: z.string().nullable().describe("IA Rmarks"),
+  ciaremarks: z.string().nullable().describe("CIA Remarks"),
+  mdremarks: z.string().nullable().describe("MD Remarks"),
+  status: z.string().nullable().describe("Status"),
+  approvalStage: z.string().nullable().describe("Approval Stage"),
 });
 
 type ViewForm = z.infer<typeof viewSchema>;
@@ -150,7 +154,7 @@ const CustomerTable: FC<{ data: SafeCustomer[]; role: string }> = ({ data, role 
     try {
       // CCRO defaults
       if (role === "CCRO") {
-        data.approvalStage = "CCO";
+        data.approvalStage = "HCC";
         data.status = "Pending";
       }
 
@@ -222,18 +226,30 @@ const CustomerTable: FC<{ data: SafeCustomer[]; role: string }> = ({ data, role 
                           <DialogTitle>Customer Details</DialogTitle>
                         </DialogHeader>
                         <form className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                          {Object.entries(form.getValues())
-                            .filter(
-                              ([key]) =>
-                                !["id", "updatedAt", "createdById", "createdAt","adjustmentEndDate"].includes(key)
-                            )
-                            .map(([key, value]) => (
+                        {Object.entries(form.getValues())
+                          .filter(
+                            ([key]) =>
+                              !["id", "updatedAt", "createdById", "createdAt"].includes(key)
+                          )
+                          .map(([key, value]) => {
+                            let displayValue = value ?? "-";
+
+                            if (key === "createdBy" && value && typeof value === "object") {
+                              displayValue = (value as any).username ?? "-"; // 👈 safely extract username
+                            }
+
+                            // ✅ get the label from zod schema metadata
+                            const schemaShape = (viewSchema.shape as any)[key];
+                            const label = schemaShape?.description ?? key;
+
+                            return (
                               <div key={key}>
-                                <Label className="capitalize">{key}</Label>
-                                <Input value={value ?? "-"} readOnly />
+                                <Label className=" text-green-500">{label}</Label>
+                                <Input value={String(displayValue)} readOnly />
                               </div>
-                            ))}
-                        </form>
+                            );
+                          })}
+                      </form>
                       </DialogContent>
                     </Dialog>
 
@@ -274,8 +290,8 @@ const CustomerTable: FC<{ data: SafeCustomer[]; role: string }> = ({ data, role 
                         className="text-blue-600 border-blue-600 hover:bg-blue-50"
                         onClick={() => {
                           setSelectedCustomer(item);
-                          // Set default for CCRO
-                          form.reset({ ...item, approvalStage: "CCO", status: "Pending" });
+                          // Set default for HCC
+                          form.reset({ ...item, approvalStage: "HCC", status: "Pending" });
                           setEditDialogOpen(true);
                         }}
                       >
@@ -352,24 +368,28 @@ const CustomerTable: FC<{ data: SafeCustomer[]; role: string }> = ({ data, role 
               onSubmit={form.handleSubmit(handleEditSubmit)}
             >
               {Object.entries(form.getValues())
-              .filter(
-                ([key]) =>
-                  !["id", "updatedAt", "createdById", "createdAt", "adjustmentEndDate"].includes(key)
-              )
-              .map(([key, value]) => {
-                let displayValue = value ?? "-";
-
-                if (key === "createdBy" && value && typeof value === "object") {
-                  displayValue = (value as any).username ?? "-"; // 👈 safely extract username
-                }
-
-                return (
-                  <div key={key}>
+                .filter(([key]) => !["id", "updatedAt", "createdById", "createdAt"].includes(key))
+                .map(([key, value]) => (
+                  <div key={key} className="space-y-1">
                     <Label className="capitalize">{key}</Label>
-                    <Input value={displayValue} readOnly />
+                    {["hccremarks", "bmremarks","rhremarks","raremarks","iaremarks","ciaremarks", "mdremarks"].includes(key) &&
+                    role === "CCRO" ? (
+                      <Textarea {...form.register(key as keyof ViewForm)} readOnly />
+                    ) : key === "balanceAfterAdjustment" ? (
+                      <Input
+                        value={
+                          Number(form.getValues("initialDebt") || 0) -
+                          Number(form.getValues("adjustmentAmount") || 0)
+                        }
+                        disabled
+                      />
+                    ) : key.includes("remarks") ? (
+                      <Textarea {...form.register(key as keyof ViewForm)} />
+                    ) : (
+                      <Input {...form.register(key as keyof ViewForm)} />
+                    )}
                   </div>
-                );
-              })}
+                ))}
 
               <div className="flex justify-end gap-2 col-span-2 mt-4">
                 <Button variant="outline" onClick={() => setEditDialogOpen(false)}>

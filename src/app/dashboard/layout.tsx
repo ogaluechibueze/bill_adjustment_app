@@ -15,7 +15,7 @@ export default async function DashboardLayout({
   return (
     <div className="min-h-screen flex bg-gray-50 ml-5">
       {/* Sidebar with top spacing */}
-      <div className="pt-20">
+      <div className="pt-25">
         <Sidebar role={role} />
       </div>
 

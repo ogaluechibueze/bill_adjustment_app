@@ -39,9 +39,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   // ✅ Map role → remarks field
   const remarksFieldMap: Record<Stage, keyof typeof item> = {
     CCRO: "ccroremarks",
-    CCO: "ccoremarks",
-    CAO: "caoremarks",
-    MD: "mdremarks",
+    HCC:  "hccremarks",
+    BM:   "bmremarks",
+    RH:   "rhremarks",
+    RA:   "raremarks",
+    IA:   "iaremarks",
+    CIA:  "ciaremarks",
+    MD:   "mdremarks",
   };
 
   const remarksField = remarksFieldMap[role];

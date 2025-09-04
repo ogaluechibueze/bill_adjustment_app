@@ -4,40 +4,94 @@ import bcrypt from 'bcryptjs';
 const prisma = new PrismaClient();
 
 async function main() {
-  // Clean existing data (⚠️ optional, don’t use in production blindly)
+  // ⚠️ Clean existing data (be careful in production!)
   await prisma.customer.deleteMany();
   await prisma.user.deleteMany();
 
   // Hash passwords
   const hashedPassword = await bcrypt.hash("Passw0rd!", 10);
 
-  // Seed users with roles
+  // Seed users with roles & business units
   const ccro = await prisma.user.create({
     data: {
       email: "ccro@example.com",
       username: "ccro",
       password: hashedPassword,
       role: Role.CCRO,
+      bussinessUnit: "ETETE",
+      region: "BENIN SOUTH",
       active: true,
     },
   });
 
   const cco = await prisma.user.create({
     data: {
-      email: "cco@example.com",
-      username: "cco",
+      email: "hcc@example.com",
+      username: "head customer care",
       password: hashedPassword,
-      role: Role.CCO,
+      role: Role.HCC,
+      bussinessUnit: "ETETE",
+      region: "BENIN SOUTH",
       active: true,
     },
   });
 
   const cao = await prisma.user.create({
     data: {
-      email: "cao@example.com",
-      username: "cao",
+      email: "bm@example.com",
+      username: "business manager etete",
       password: hashedPassword,
-      role: Role.CAO,
+      role: Role.BM,
+      bussinessUnit: "ETETE",
+      region: "BENIN SOUTH",
+      active: true,
+    },
+  });
+
+   const rh = await prisma.user.create({
+    data: {
+      email: "rh@example.com",
+      username: "regional head",
+      password: hashedPassword,
+      role: Role.RH,
+      bussinessUnit: "ETETE",
+      region: "BENIN SOUTH",
+      active: true,
+    },
+  });
+
+   const ra = await prisma.user.create({
+    data: {
+      email: "ra@example.com",
+      username: "regional auditor etete",
+      password: hashedPassword,
+      role: Role.RA,
+      bussinessUnit: "ETETE",
+      region: "BENIN SOUTH",
+      active: true,
+    },
+  });
+
+   const ia = await prisma.user.create({
+    data: {
+      email: "ia@example.com",
+      username: "internal auditor etete",
+      password: hashedPassword,
+      role: Role.IA,
+      bussinessUnit: "head office",
+      region: "HEAD OFFICE",
+      active: true,
+    },
+  });
+
+   const cia = await prisma.user.create({
+    data: {
+      email: "cia@example.com",
+      username: "chief internal auditor",
+      password: hashedPassword,
+      role: Role.BM,
+      bussinessUnit: "head office",
+      region: "BENIN SOUTH",
       active: true,
     },
   });
@@ -48,11 +102,25 @@ async function main() {
       username: "md",
       password: hashedPassword,
       role: Role.MD,
+      bussinessUnit: "Head office",
+      region: "HEAD OFFICE",
       active: true,
     },
   });
 
-  // Optional: Seed a sample customer linked to CCRO
+  const admin = await prisma.user.create({
+    data: {
+      email: "admin@example.com",
+      username: "admin",
+      password: hashedPassword,
+      role: Role.ADMIN,
+      bussinessUnit: "ITBEDC",
+      region: "HEAD OFFICE",
+      active: true,
+    },
+  });
+
+  // ✅ Seed a sample customer linked to CCRO
   await prisma.customer.create({
     data: {
       globalAcctNo: "ACC123456",

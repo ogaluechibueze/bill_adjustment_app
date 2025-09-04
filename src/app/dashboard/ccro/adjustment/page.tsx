@@ -71,7 +71,6 @@ export default async function Page() {
 
   return (
     <div className="space-y-6">
-       
       <CustomerForm />
       {/* ✅ just pass the data, no need to filter by role */}
       
