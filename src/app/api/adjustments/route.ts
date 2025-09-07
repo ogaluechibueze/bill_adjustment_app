@@ -3,7 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// 🔧 helper: get all {month, year} in date range
 function getMonthRange(start: Date, end: Date) {
   const months: { month: number; year: number }[] = [];
   const cur = new Date(start);
@@ -16,7 +15,6 @@ function getMonthRange(start: Date, end: Date) {
   return months;
 }
 
-// ✅ GET all customers with adjustments + items
 export async function GET() {
   try {
     const customers = await prisma.customer.findMany({
@@ -24,7 +22,7 @@ export async function GET() {
       include: {
         createdBy: { select: { username: true } },
         Adjustment: {
-          orderBy: { startDate: "desc" },
+          orderBy: { adjustmentStartDate: "desc" },
           include: {
             items: {
               orderBy: [{ year: "asc" }, { month: "asc" }],
@@ -44,7 +42,6 @@ export async function GET() {
   }
 }
 
-// ✅ POST new adjustment (CCRO creates)
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -56,12 +53,24 @@ export async function POST(req: Request) {
     const userId = (session as any).user?.id;
     const role = (session as any).user?.role;
 
-    // only CCRO can create
     if (!userId || role !== "CCRO") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await req.json();
+
+    // 🔎 0️⃣ Check if customer already exists
+    const existingCustomer = await prisma.customer.findUnique({
+      where: { globalAcctNo: body.globalAcctNo },
+      include: { Adjustment: true },
+    });
+
+    if (existingCustomer) {
+      return NextResponse.json(
+        { error: `Customer with account ${body.globalAcctNo} already exists.` },
+        { status: 400 }
+      );
+    }
 
     // 1️⃣ Create Customer
     const newCustomer = await prisma.customer.create({
@@ -71,7 +80,10 @@ export async function POST(req: Request) {
         region: body.region ?? null,
         businessUnit: body.businessUnit ?? null,
         band: body.band ?? null,
+        tariffClass: body.tariffClass ?? null,
+        customerType: body.customerType ?? null,
         feederName: body.feederName ?? null,
+        feederId: body.feederId ? Number(body.feederId) : null,
         source: body.source ?? null,
         ticketNo: body.ticketNo ?? null,
         initialDebt: body.initialDebt ? parseFloat(body.initialDebt) : null,
@@ -108,9 +120,9 @@ export async function POST(req: Request) {
     const adjustment = await prisma.adjustment.create({
       data: {
         customerId: newCustomer.id,
-        startDate: new Date(body.adjustmentStartDate),
-        endDate: new Date(body.adjustmentEndDate),
-        totalAmount: 0,
+        adjustmentStartDate: new Date(body.adjustmentStartDate),
+        adjustmentEndDate: new Date(body.adjustmentEndDate),
+        balanceAfterAdjustment: 0,
       },
     });
 
@@ -125,7 +137,7 @@ export async function POST(req: Request) {
     for (const { month, year } of months) {
       const consumption = await prisma.consumption.findFirst({
         where: {
-          feeder: body.feederName,
+          feederId: Number(body.feederId),
           month,
           year,
         },
@@ -133,15 +145,14 @@ export async function POST(req: Request) {
 
       const tariff = await prisma.tariff.findFirst({
         where: {
-          tariffClass: body.type, // 👈 type maps to tariffClass
+          tariffClassId: Number(body.tariffClassId),
           month,
           year,
         },
       });
 
       if (consumption && tariff) {
-        const amount =
-          Number(consumption.consumption) * Number(tariff.rate);
+        const amount = Number(consumption.consumption) * Number(tariff.rate);
 
         await prisma.adjustmentItem.create({
           data: {
@@ -149,7 +160,7 @@ export async function POST(req: Request) {
             month,
             year,
             consumption: consumption.consumption,
-            tariffRate: tariff.rate,
+            tariff: tariff.rate,
             amount,
           },
         });
@@ -176,3 +187,4 @@ export async function POST(req: Request) {
     );
   }
 }
+

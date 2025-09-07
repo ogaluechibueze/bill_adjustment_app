@@ -1,6 +1,6 @@
 // app/api/customers/search/route.ts
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma"; // adjust path if your prisma client is elsewhere
+import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
   try {
@@ -14,14 +14,45 @@ export async function GET(req: NextRequest) {
     const customers = await prisma.customerDetails.findMany({
       where: {
         globalAcctNo: {
-          contains:query ,
-          
+          contains: query,
+        },
+      },
+      include: {
+        feeder: {
+          select: { id: true, name: true },
+        },
+        tariffClass: {
+          select: { id: true, name: true },
         },
       },
       take: 10,
     });
 
-    return NextResponse.json(customers);
+    // Format the response so frontend has both IDs & names
+    const result = customers.map((c) => ({
+      id: c.id,
+      globalAcctNo: c.globalAcctNo,
+      customerName: c.customerName,
+      customerAddress: c.customerAddress,
+      region: c.region,
+      businessUnit: c.businessUnit,
+      serviceUnit: c.serviceUnit,
+      customerType: c.customerType,
+      meterNumber: c.meterNumber,
+      band: c.band,
+      billStatus: c.billStatus,
+      totalOutstanding: c.totalOutstanding,
+
+      // ✅ Feeder info
+      feederId: c.feeder?.id ?? null,
+      feederName: c.feeder?.name ?? null,
+
+      // ✅ Tariff info
+      tariffClassId: c.tariffClass?.id ?? null,
+      tariffClassName: c.tariffClass?.name ?? null,
+    }));
+
+    return NextResponse.json(result);
   } catch (error) {
     console.error("❌ Search API error:", error);
     return NextResponse.json(

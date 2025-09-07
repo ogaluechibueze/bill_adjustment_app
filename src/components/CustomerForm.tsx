@@ -31,20 +31,24 @@ const formSchema = z.object({
   globalAcctNo: z.string().min(3, "Global Account No is required"),
   customerName: z.string().min(3, "Customer name is required"),
   region: z.string().optional(),
-  type: z.string().optional(),
   businessUnit: z.string().optional(),
   band: z.string().optional(),
-  feederName: z.string().optional(),
-  source: z.string().optional(),
   customerType: z.string().optional(),
+  source: z.string().optional(),
+
   tariffClass: z.string().optional(),
+  tariffClassId: z.string().optional(),
+  feederName: z.string().optional(),
+  feederId: z.string().optional(),
+
   ticketNo: z.string().optional(),
-  initialDebt: z.string().optional(),
-  adjustmentAmount: z.string().optional(),
+  initialDebt: z.coerce.number().optional(),
+  adjustmentAmount: z.coerce.number().optional(),
   adjustmentStartDate: z.string().optional(),
   adjustmentEndDate: z.string().optional(),
   ccroremarks: z.string().optional(),
 });
+
 
 // ✅ Dropdown options
 const regions = ["AKURE", "ASABA", "AUCHI", "BENIN NORTH", "BENIN SOUTH", "EKITI", "ONDO", "SAPELE", "WARRI"];
@@ -109,7 +113,6 @@ export default function CustomerForm() {
       globalAcctNo: "",
       customerName: "",
       region: "",
-      type: "",
       businessUnit: "",
       band: "",
       feederName: "",
@@ -117,8 +120,8 @@ export default function CustomerForm() {
       customerType: "",
       tariffClass: "",
       ticketNo: "",
-      initialDebt: "",
-      adjustmentAmount: "",
+      initialDebt: Number(""),
+      adjustmentAmount: Number(""),
       adjustmentStartDate: "",
       adjustmentEndDate: "",
       ccroremarks: "",
@@ -131,40 +134,41 @@ export default function CustomerForm() {
 
   const startDate = watch("adjustmentStartDate");
   const endDate = watch("adjustmentEndDate");
-  const feederName = watch("feederName");
-  const type = watch("type"); // assuming type maps to tariffClass
+  const feederId = watch("feederName");
+  const type = watch("customerType"); // assuming type maps to tariffClass
 
    // 🔥 Auto-calc adjustment amount when inputs change
   useEffect(() => {
-    async function fetchAdjustment() {
-      if (!startDate || !endDate || !feederName || !type) return;
+  async function fetchAdjustment() {
+    if (!startDate || !endDate || !watch("feederId") || !watch("tariffClassId")) return;
 
-      try {
-        const res = await fetch("/api/calculate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            feederName,
-            tariffClass: type, // 👈 you may need to map this properly
-            startDate,
-            endDate,
-          }),
-        });
+    try {
+      const res = await fetch("/api/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          feederId: watch("feederId"),
+          tariffClassId: watch("tariffClassId"),
+          startDate,
+          endDate,
+        }),
+      });
 
-        if (res.ok) {
-          const data = await res.json();
-          reset((prev) => ({
-            ...prev,
-            adjustmentAmount: data.adjustmentAmount.toFixed(2),
-          }));
-        }
-      } catch (err) {
-        console.error("Error calculating adjustment:", err);
+      if (res.ok) {
+        const data = await res.json();
+        reset((prev) => ({
+          ...prev,
+          adjustmentAmount: data.adjustmentAmount.toFixed(2),
+        }));
       }
+    } catch (err) {
+      console.error("Error calculating adjustment:", err);
     }
+  }
 
-    fetchAdjustment();
-  }, [startDate, endDate, feederName, type, reset]);
+  fetchAdjustment();
+}, [startDate, endDate, watch("feederId"), watch("tariffClassId"), reset]);
+
 
   // ✅ Submit handler
   async function onSubmit(data: CustomerFormData) {
@@ -193,53 +197,57 @@ export default function CustomerForm() {
 
   // ✅ Load accounts from backend
   const loadAccounts = async (inputValue: string) => {
-    if (!inputValue) return [];
-    try {
-      const res = await fetch(`/api/customers/search?query=${inputValue}`);
-      if (!res.ok) return [];
-      const data = await res.json();
-      return data.map((c: any) => ({
-        label: `${c.globalAcctNo} - ${c.customerName}`,
-        value: c.globalAcctNo,
-        customer: c,
-      }));
-    } catch (e) {
-      console.error(e);
-      return [];
-    }
-  };
+  if (!inputValue) return [];
+  try {
+    const res = await fetch(`/api/customers/search?query=${inputValue}`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return data.map((c: any) => ({
+      label: `${c.globalAcctNo} - ${c.customerName}`,
+      value: c.globalAcctNo,
+      customer: c,
+    }));
+  } catch (e) {
+    console.error(e);
+    return [];
+  }
+};
 
-  // ✅ When user selects an account → auto fill
-  const handleAccountSelect = (selected: any) => {
+ // ✅ When user selects an account → auto fill
+const handleAccountSelect = (selected: any) => {
   if (!selected) return;
 
-  // Always keep globalAcctNo
   const acctNo = selected.value;
 
   if (selected.customer) {
-    const customer = selected.customer;
+    const c = selected.customer;
+
     reset({
       globalAcctNo: acctNo,
-      customerName: customer.customerName ?? "",
-      region: customer.region ?? "",
-      type: customer.customerType ?? "",
-      businessUnit: customer.businessUnit ?? "",
-      band: customer.band ?? "",
-      customerType: customer.customerType ?? "",
-      tariffClass: customer.tariffClass ?? "",
-      feederName: customer.feeder ?? "",
-      source: customer.source ?? "",
-      ticketNo: customer.ticketNo ?? "",
-      initialDebt: customer.initialDebt?.toString() ?? "",
+      customerName: c.customerName ?? "",
+      region: c.region ?? "",
+      businessUnit: c.businessUnit ?? "",
+      band: c.band ?? "",
+      customerType: c.customerType ?? "",
+      source: c.source ?? "",
+
+      // ✅ feeder + tariff (flattened from API)
+      feederName: c.feederName ?? "",
+      feederId: c.feederId?.toString() ?? "",
+      tariffClass: c.tariffClassName ?? "",
+      tariffClassId: c.tariffClassId?.toString() ?? "",
+
+      ticketNo: c.ticketNo ?? "",
+      initialDebt: c.totalOutstanding?.toString() ?? "",
     });
   } else {
-    // If no customer (new account), just set the account number
     reset((prev) => ({
       ...prev,
       globalAcctNo: acctNo,
     }));
   }
 };
+
 
   return (
     <Card className="max-w-3xl mx-auto p-6 shadow-lg rounded-2xl">

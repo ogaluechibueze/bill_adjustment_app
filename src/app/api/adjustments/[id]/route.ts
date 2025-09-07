@@ -18,7 +18,7 @@ export async function GET(
       include: {
         createdBy: { select: { username: true } },
         Adjustment: {
-          orderBy: { startDate: "desc" },
+          orderBy: { adjustmentStartDate: "desc" },
           include: {
             items: {
               orderBy: [{ year: "asc" }, { month: "asc" }],

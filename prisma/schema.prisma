@@ -61,6 +61,7 @@ model Customer {
   tariffClass             String?
   meterNumber             String?
   band                    String?
+  feederId                Int?
   feederName              String?
   source                  String?
   ticketNo                String?
@@ -155,6 +156,7 @@ model Adjustment {
   adjustmentEndDate   DateTime?
   adjustmentAmount    Decimal? @db.Decimal(12,2)
   balanceAfterAdjustment Decimal? @db.Decimal(12,2)
+  totalAmount            Float? 
   items        AdjustmentItem[]
   createdAt    DateTime        @default(now())
 }
