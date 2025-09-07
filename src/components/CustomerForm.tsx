@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Loader2, Save } from "lucide-react";
-import { AccountSelect } from "../lib/types";
+import { useEffect } from "react";
 
 
 const AsyncCreatableSelect = dynamic(
@@ -24,6 +24,7 @@ const AsyncCreatableSelect = dynamic(
 );
 
 const Select = dynamic(() => import("react-select"), { ssr: false });
+
 
 // ✅ Validation schema
 const formSchema = z.object({
@@ -35,6 +36,8 @@ const formSchema = z.object({
   band: z.string().optional(),
   feederName: z.string().optional(),
   source: z.string().optional(),
+  customerType: z.string().optional(),
+  tariffClass: z.string().optional(),
   ticketNo: z.string().optional(),
   initialDebt: z.string().optional(),
   adjustmentAmount: z.string().optional(),
@@ -111,6 +114,8 @@ export default function CustomerForm() {
       band: "",
       feederName: "",
       source: "",
+      customerType: "",
+      tariffClass: "",
       ticketNo: "",
       initialDebt: "",
       adjustmentAmount: "",
@@ -124,6 +129,43 @@ export default function CustomerForm() {
   const adjustmentAmount = Number(watch("adjustmentAmount") || 0);
   const balance = initialDebt - adjustmentAmount;
 
+  const startDate = watch("adjustmentStartDate");
+  const endDate = watch("adjustmentEndDate");
+  const feederName = watch("feederName");
+  const type = watch("type"); // assuming type maps to tariffClass
+
+   // 🔥 Auto-calc adjustment amount when inputs change
+  useEffect(() => {
+    async function fetchAdjustment() {
+      if (!startDate || !endDate || !feederName || !type) return;
+
+      try {
+        const res = await fetch("/api/calculate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            feederName,
+            tariffClass: type, // 👈 you may need to map this properly
+            startDate,
+            endDate,
+          }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          reset((prev) => ({
+            ...prev,
+            adjustmentAmount: data.adjustmentAmount.toFixed(2),
+          }));
+        }
+      } catch (err) {
+        console.error("Error calculating adjustment:", err);
+      }
+    }
+
+    fetchAdjustment();
+  }, [startDate, endDate, feederName, type, reset]);
+
   // ✅ Submit handler
   async function onSubmit(data: CustomerFormData) {
     const payload = { ...data, balanceAfterAdjustment: balance };
@@ -135,10 +177,10 @@ export default function CustomerForm() {
       });
 
       if (res.ok) {
-        alert("Submitted ✅");
+        alert("the form has been submitted successfully ✅");
         reset();
       } else {
-        alert("❌ Error submitting");
+        alert("❌ Error submitting the form");
       }
     } catch (err) {
       console.error(err);
@@ -183,14 +225,12 @@ export default function CustomerForm() {
       type: customer.customerType ?? "",
       businessUnit: customer.businessUnit ?? "",
       band: customer.band ?? "",
-      feederName: customer.feederName ?? "",
+      customerType: customer.customerType ?? "",
+      tariffClass: customer.tariffClass ?? "",
+      feederName: customer.feeder ?? "",
       source: customer.source ?? "",
       ticketNo: customer.ticketNo ?? "",
       initialDebt: customer.initialDebt?.toString() ?? "",
-      adjustmentAmount: customer.adjustmentAmount?.toString() ?? "",
-      adjustmentStartDate: customer.adjustmentStartDate ?? "",
-      adjustmentEndDate: customer.adjustmentEndDate ?? "",
-      ccroremarks: customer.ccroremarks ?? "",
     });
   } else {
     // If no customer (new account), just set the account number
@@ -246,6 +286,7 @@ export default function CustomerForm() {
             {[
               ["customerName", "Customer Name"],
               ["source", "Source"],
+              ["tariffClass", "tariffClass"],
               ["ticketNo", "Ticket No"],
             ].map(([k, label]) => (
               <div key={k} className="space-y-1">
@@ -282,7 +323,7 @@ export default function CustomerForm() {
               control={control}
               render={({ field }) => (
                 <div className="space-y-1">
-                  <Label>Type</Label>
+                  <Label>Customer Type</Label>
                   <Select
                     options={toOptions(types)}
                     value={toOptions(types).find((o) => o.value === field.value)}
@@ -349,7 +390,7 @@ export default function CustomerForm() {
 
             <div className="space-y-1">
               <Label>Adjustment Amount</Label>
-              <Input type="number" {...register("adjustmentAmount")} />
+              <Input type="number" {...register("adjustmentAmount")}/>
             </div>
 
             <div className="space-y-1">

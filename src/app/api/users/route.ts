@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 
-// GET all users
 export async function GET() {
   const users = await prisma.user.findMany({
     orderBy: { createdAt: "desc" },
@@ -10,14 +9,13 @@ export async function GET() {
   return NextResponse.json(users);
 }
 
-// POST create user
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { email, username, password, role, bussinessUnit, region } = body;
+    const { email, username, password, role, region, bussinessUnit } = body;
 
     if (!email || !username || !password || !role) {
-      return NextResponse.json({ error: "Missing fields" }, { status: 400 });
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -28,14 +26,14 @@ export async function POST(req: Request) {
         username,
         password: hashedPassword,
         role,
-        bussinessUnit,
         region,
+        bussinessUnit,
       },
     });
 
     return NextResponse.json(user, { status: 201 });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
+  } catch (error: any) {
+    console.error("Error creating user:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

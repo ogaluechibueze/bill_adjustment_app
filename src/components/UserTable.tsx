@@ -4,7 +4,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -24,9 +23,11 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import { Loader2, Eye, EyeOff } from "lucide-react";
 
 export default function UserTable({ data }: { data: any[] }) {
   const [users, setUsers] = useState(data);
+  const [loading, setLoading] = useState(false);
 
   const [newUser, setNewUser] = useState<any>({
     email: "",
@@ -39,26 +40,12 @@ export default function UserTable({ data }: { data: any[] }) {
 
   const [editingUser, setEditingUser] = useState<any | null>(null);
 
-  // ✅ Toggle Active/Inactive
-  const toggleActive = async (id: number, current: boolean) => {
-    try {
-      const res = await fetch(`/api/users/${id}/toggle`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ active: !current }),
-      });
-      if (!res.ok) throw new Error("Failed");
+  const [showPassword, setShowPassword] = useState(false); // for edit modal
+  const [showNewPassword, setShowNewPassword] = useState(false); // for create modal
 
-      const updated = await res.json();
-      setUsers(users.map((u) => (u.id === id ? updated : u)));
-      toast.success(`User ${updated.active ? "activated" : "deactivated"}`);
-    } catch {
-      toast.error("Error toggling user");
-    }
-  };
-
-  // ✅ Delete user with confirmation
+  // ✅ Delete user
   const deleteUser = async (id: number) => {
+    setLoading(true);
     try {
       const res = await fetch(`/api/users/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed");
@@ -66,29 +53,41 @@ export default function UserTable({ data }: { data: any[] }) {
       toast.success("User deleted");
     } catch {
       toast.error("Error deleting user");
+    } finally {
+      setLoading(false);
     }
   };
 
   // ✅ Save Edit
   const saveEdit = async () => {
+    if (!editingUser) return;
+    setLoading(true);
+
     try {
+      const payload = { ...editingUser };
+      if (!payload.password) delete payload.password;
+
       const res = await fetch(`/api/users/${editingUser.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(editingUser),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) throw new Error("Failed");
+
       const updated = await res.json();
       setUsers(users.map((u) => (u.id === updated.id ? updated : u)));
       setEditingUser(null);
       toast.success("User updated");
     } catch {
       toast.error("Error updating user");
+    } finally {
+      setLoading(false);
     }
   };
 
   // ✅ Create user
   const createUser = async () => {
+    setLoading(true);
     try {
       const res = await fetch(`/api/users`, {
         method: "POST",
@@ -109,6 +108,8 @@ export default function UserTable({ data }: { data: any[] }) {
       });
     } catch {
       toast.error("Error creating user");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -128,29 +129,34 @@ export default function UserTable({ data }: { data: any[] }) {
               <Label>Email</Label>
               <Input
                 value={newUser.email}
-                onChange={(e) =>
-                  setNewUser({ ...newUser, email: e.target.value })
-                }
+                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
               />
             </div>
             <div>
               <Label>Username</Label>
               <Input
                 value={newUser.username}
-                onChange={(e) =>
-                  setNewUser({ ...newUser, username: e.target.value })
-                }
+                onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
               />
             </div>
             <div>
               <Label>Password</Label>
-              <Input
-                type="password"
-                value={newUser.password}
-                onChange={(e) =>
-                  setNewUser({ ...newUser, password: e.target.value })
-                }
-              />
+              <div className="relative">
+                <Input
+                  type={showNewPassword ? "text" : "password"}
+                  value={newUser.password}
+                  onChange={(e) =>
+                    setNewUser({ ...newUser, password: e.target.value })
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                  className="absolute right-2 top-2 text-gray-500"
+                >
+                  {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
             <div>
               <Label>Role</Label>
@@ -160,8 +166,12 @@ export default function UserTable({ data }: { data: any[] }) {
                 onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
               >
                 <option value="CCRO">CCRO</option>
-                <option value="CCO">CCO</option>
-                <option value="CAO">CAO</option>
+                <option value="HCC">HCC</option>
+                <option value="BM">BM</option>
+                <option value="RH">RH</option>
+                <option value="RA">RA</option>
+                <option value="IA">IA</option>
+                <option value="CIA">CIA</option>
                 <option value="MD">MD</option>
                 <option value="ADMIN">ADMIN</option>
               </select>
@@ -170,9 +180,7 @@ export default function UserTable({ data }: { data: any[] }) {
               <Label>Region</Label>
               <Input
                 value={newUser.region}
-                onChange={(e) =>
-                  setNewUser({ ...newUser, region: e.target.value })
-                }
+                onChange={(e) => setNewUser({ ...newUser, region: e.target.value })}
               />
             </div>
             <div>
@@ -185,7 +193,14 @@ export default function UserTable({ data }: { data: any[] }) {
               />
             </div>
             <Button onClick={createUser} className="w-full">
-              Save
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  Saving....
+                </>
+              ) : (
+                <>Save</>
+              )}
             </Button>
           </div>
         </DialogContent>
@@ -213,12 +228,28 @@ export default function UserTable({ data }: { data: any[] }) {
                 <Input
                   value={editingUser.username}
                   onChange={(e) =>
-                    setEditingUser({
-                      ...editingUser,
-                      username: e.target.value,
-                    })
+                    setEditingUser({ ...editingUser, username: e.target.value })
                   }
                 />
+              </div>
+              <div>
+                <Label>Password (leave blank to keep current)</Label>
+                <div className="relative">
+                  <Input
+                    type={showPassword ? "text" : "password"}
+                    value={editingUser.password || ""}
+                    onChange={(e) =>
+                      setEditingUser({ ...editingUser, password: e.target.value })
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2 top-2 text-gray-500"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
               </div>
               <div>
                 <Label>Role</Label>
@@ -230,8 +261,12 @@ export default function UserTable({ data }: { data: any[] }) {
                   }
                 >
                   <option value="CCRO">CCRO</option>
-                  <option value="CCO">CCO</option>
-                  <option value="CAO">CAO</option>
+                  <option value="HCC">HCC</option>
+                  <option value="BM">BM</option>
+                  <option value="RH">RH</option>
+                  <option value="RA">RA</option>
+                  <option value="IA">IA</option>
+                  <option value="CIA">CIA</option>
                   <option value="MD">MD</option>
                   <option value="ADMIN">ADMIN</option>
                 </select>
@@ -258,14 +293,21 @@ export default function UserTable({ data }: { data: any[] }) {
                 />
               </div>
               <Button onClick={saveEdit} className="w-full">
-                Save Changes
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" /> Saving
+                    Changes.....
+                  </>
+                ) : (
+                  <>Save Changes</>
+                )}
               </Button>
             </div>
           )}
         </DialogContent>
       </Dialog>
 
-      {/* Table */}
+      {/* Table (unchanged) */}
       <table className="w-full border">
         <thead>
           <tr className="bg-gray-100">
@@ -275,7 +317,6 @@ export default function UserTable({ data }: { data: any[] }) {
             <th className="border p-2">Role</th>
             <th className="border p-2">Region</th>
             <th className="border p-2">Business Unit</th>
-            <th className="border p-2">Active</th>
             <th className="border p-2">Actions</th>
           </tr>
         </thead>
@@ -288,18 +329,11 @@ export default function UserTable({ data }: { data: any[] }) {
               <td className="border p-2">{u.role}</td>
               <td className="border p-2">{u.region}</td>
               <td className="border p-2">{u.bussinessUnit}</td>
-              <td className="border p-2 text-center">
-                <Switch
-                  checked={u.active}
-                  onCheckedChange={() => toggleActive(u.id, u.active)}
-                />
-              </td>
               <td className="border p-2 flex gap-2">
                 <Button onClick={() => setEditingUser(u)} size="sm">
                   Edit
                 </Button>
 
-                {/* Delete confirmation */}
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="destructive" size="sm">
@@ -312,8 +346,7 @@ export default function UserTable({ data }: { data: any[] }) {
                         Delete User {u.username}?
                       </AlertDialogTitle>
                       <AlertDialogDescription>
-                        This action cannot be undone. The user will be
-                        permanently removed.
+                        This action cannot be undone. The user will be permanently removed.
                       </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -322,7 +355,13 @@ export default function UserTable({ data }: { data: any[] }) {
                         onClick={() => deleteUser(u.id)}
                         className="bg-red-600 text-white"
                       >
-                        Delete
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin mr-2" /> Deleting...
+                          </>
+                        ) : (
+                          <>Delete</>
+                        )}
                       </AlertDialogAction>
                     </AlertDialogFooter>
                   </AlertDialogContent>

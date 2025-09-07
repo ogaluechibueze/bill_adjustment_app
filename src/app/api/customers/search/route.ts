@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json([]);
     }
 
-    const customers = await prisma.customer.findMany({
+    const customers = await prisma.customerDetails.findMany({
       where: {
         globalAcctNo: {
           contains:query ,

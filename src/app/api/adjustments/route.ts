@@ -3,13 +3,34 @@ import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
-// ✅ GET all customers with creator's username
+// 🔧 helper: get all {month, year} in date range
+function getMonthRange(start: Date, end: Date) {
+  const months: { month: number; year: number }[] = [];
+  const cur = new Date(start);
+
+  while (cur <= end) {
+    months.push({ month: cur.getMonth() + 1, year: cur.getFullYear() });
+    cur.setMonth(cur.getMonth() + 1);
+  }
+
+  return months;
+}
+
+// ✅ GET all customers with adjustments + items
 export async function GET() {
   try {
     const customers = await prisma.customer.findMany({
       orderBy: { createdAt: "desc" },
       include: {
-        createdBy: { select: { username: true } }, // 👈 show username always
+        createdBy: { select: { username: true } },
+        Adjustment: {
+          orderBy: { startDate: "desc" },
+          include: {
+            items: {
+              orderBy: [{ year: "asc" }, { month: "asc" }],
+            },
+          },
+        },
       },
     });
 
@@ -42,6 +63,7 @@ export async function POST(req: Request) {
 
     const body = await req.json();
 
+    // 1️⃣ Create Customer
     const newCustomer = await prisma.customer.create({
       data: {
         globalAcctNo: body.globalAcctNo,
@@ -52,9 +74,13 @@ export async function POST(req: Request) {
         feederName: body.feederName ?? null,
         source: body.source ?? null,
         ticketNo: body.ticketNo ?? null,
-        initialDebt: body.initialDebt ?? null,
-        adjustmentAmount: body.adjustmentAmount ?? null,
-        balanceAfterAdjustment: body.balanceAfterAdjustment ?? null,
+        initialDebt: body.initialDebt ? parseFloat(body.initialDebt) : null,
+        adjustmentAmount: body.adjustmentAmount
+          ? parseFloat(body.adjustmentAmount)
+          : null,
+        balanceAfterAdjustment: body.balanceAfterAdjustment
+          ? parseFloat(body.balanceAfterAdjustment)
+          : null,
         adjustmentStartDate: body.adjustmentStartDate
           ? new Date(body.adjustmentStartDate)
           : null,
@@ -64,14 +90,84 @@ export async function POST(req: Request) {
         ccroremarks: body.ccroremarks ?? null,
         status: "Pending",
         approvalStage: "HCC",
-        createdById: userId, // 👈 now correctly saved from session
+        createdById: userId,
       },
       include: {
-        createdBy: { select: { username: true } }, // 👈 return username in response
+        createdBy: { select: { username: true } },
       },
     });
 
-    return NextResponse.json(newCustomer, { status: 201 });
+    // 2️⃣ Create Adjustment
+    if (!body.adjustmentStartDate || !body.adjustmentEndDate) {
+      return NextResponse.json(
+        { error: "Start and End dates are required" },
+        { status: 400 }
+      );
+    }
+
+    const adjustment = await prisma.adjustment.create({
+      data: {
+        customerId: newCustomer.id,
+        startDate: new Date(body.adjustmentStartDate),
+        endDate: new Date(body.adjustmentEndDate),
+        totalAmount: 0,
+      },
+    });
+
+    // 3️⃣ Generate AdjustmentItems
+    const months = getMonthRange(
+      new Date(body.adjustmentStartDate),
+      new Date(body.adjustmentEndDate)
+    );
+
+    let totalAmount = 0;
+
+    for (const { month, year } of months) {
+      const consumption = await prisma.consumption.findFirst({
+        where: {
+          feeder: body.feederName,
+          month,
+          year,
+        },
+      });
+
+      const tariff = await prisma.tariff.findFirst({
+        where: {
+          tariffClass: body.type, // 👈 type maps to tariffClass
+          month,
+          year,
+        },
+      });
+
+      if (consumption && tariff) {
+        const amount =
+          Number(consumption.consumption) * Number(tariff.rate);
+
+        await prisma.adjustmentItem.create({
+          data: {
+            adjustmentId: adjustment.id,
+            month,
+            year,
+            consumption: consumption.consumption,
+            tariffRate: tariff.rate,
+            amount,
+          },
+        });
+
+        totalAmount += amount;
+      }
+    }
+
+    // 4️⃣ Update total
+    await prisma.adjustment.update({
+      where: { id: adjustment.id },
+      data: { totalAmount },
+    });
+
+    return NextResponse.json(
+      { customer: newCustomer, adjustmentId: adjustment.id, totalAmount },
+      { status: 201 }
+    );
   } catch (error) {
     console.error("POST /api/adjustments error:", error);
     return NextResponse.json(

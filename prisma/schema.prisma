@@ -58,6 +58,7 @@ model Customer {
   region                  String?
   businessUnit            String?
   customerType            String?
+  tariffClass             String?
   meterNumber             String?
   band                    String?
   feederName              String?
@@ -85,23 +86,98 @@ model Customer {
 
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
+
+  Adjustment Adjustment[]
 }
 
-model FeederConsumption {
-  id            Int       @id @default(autoincrement())
-  feederName    String
-  month         Int       // 1 = January, 2 = February ...
-  year          Int
-  consumption   Float     // Units consumed (kWh or whatever unit you use)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+model CustomerDetails {
+  id                      Int       @id @default(autoincrement())
+  globalAcctNo            String 
+  customerName            String
+  customerAddress         String?
+  region                  String?
+  businessUnit            String?
+  serviceUnit             String?
+  customerType            String?
+  meterNumber             String?
+  tariffClassId           Int?
+  tariffClass             TariffClass? @relation(fields: [tariffClassId], references: [id])
+  band                    String?
+  feederId                Int?
+  feeder                  Feeder?   @relation(fields: [feederId], references: [id])
+  feederName11kv          String
+  feederName33kv          String?
+  source                  String?
+  ticketNo                String?
+  billStatus              String?
+  transformerName         String?
+  amountBilled            Decimal?  @db.Decimal(12,2)
+  totalOutstanding        Decimal?  @db.Decimal(12,2)
+}
+
+model Consumption {
+  id           Int      @id @default(autoincrement())
+  feederId     Int
+  month        Int
+  year         Int
+  consumption  Decimal  @db.Decimal(12,2) // kWh
+  feeder       Feeder   @relation(fields: [feederId], references: [id])
+}
+
+model TariffClass {
+  id      Int     @id @default(autoincrement())
+  name    String  @unique   // e.g. R1, R2, C1, C2, MD1, MD2...
+  tariffs Tariff[]
+  customers CustomerDetails[]
 }
 
 model Tariff {
+  id            Int          @id @default(autoincrement())
+  tariffClassId Int
+  month         Int
+  year          Int
+  rate          Decimal      @db.Decimal(12,4) // Naira per kWh
+  tariffClass   TariffClass  @relation(fields: [tariffClassId], references: [id])
+}
+
+model Feeder {
   id        Int      @id @default(autoincrement())
-  feederName String
-  band      String   // A, B, C, D, E
-  month     Int
-  year      Int
-  rate      Float    // Tariff per unit (₦)
+  name      String   @unique
+  consumptions Consumption[]
+  CustomerDetails CustomerDetails[]
+}
+
+model Adjustment {
+   id           Int             @id @default(autoincrement())
+  customerId   Int
+  customer     Customer        @relation(fields: [customerId], references: [id])
+  adjustmentStartDate DateTime?
+  adjustmentEndDate   DateTime?
+  adjustmentAmount    Decimal? @db.Decimal(12,2)
+  balanceAfterAdjustment Decimal? @db.Decimal(12,2)
+  items        AdjustmentItem[]
+  createdAt    DateTime        @default(now())
+}
+
+model AdjustmentItem {
+  id            Int       @id @default(autoincrement())
+  adjustmentId  Int
+  adjustment    Adjustment @relation(fields: [adjustmentId], references: [id])
+  month         Int
+  year          Int
+  consumption   Decimal    @db.Decimal(12,2)
+  tariff        Decimal    @db.Decimal(12,2)
+  amount        Decimal    @db.Decimal(12,2)
+}
+
+model AdjustmentView {
+  id           Int      @id @default(autoincrement())
+  customerId   Int
+  adjustmentId Int
+  month        Int
+  year         Int
+  consumption  Decimal  @db.Decimal(12,2)
+  tariff       Decimal  @db.Decimal(12,2)
+  amount       Decimal  @db.Decimal(12,2)
+  createdAt    DateTime @default(now())
 }
