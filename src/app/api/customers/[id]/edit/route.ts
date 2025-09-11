@@ -50,12 +50,12 @@ export async function PATCH(
       });
 
       if (adjustment) {
-        // update existing adjustment
+        // update existing adjustment with correct fields
         adjustment = await prisma.adjustment.update({
           where: { id: adjustment.id },
           data: {
-            startDate,
-            endDate,
+            adjustmentStartDate: startDate,
+            adjustmentEndDate: endDate,
           },
         });
 
@@ -95,7 +95,7 @@ export async function PATCH(
                 month,
                 year,
                 consumption: consumption.consumption,
-                tariffRate: tariff.rate,
+                tariff: tariff.rate,
                 amount,
               },
             });

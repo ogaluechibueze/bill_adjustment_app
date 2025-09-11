@@ -4,10 +4,12 @@ import { prisma } from "@/lib/prisma";
 // ✅ GET a single customer with their adjustments + items
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
-    const customerId = parseInt(params.id, 10);
+    // ⬇️ Await params before using
+    const { id } = await context.params;
+    const customerId = parseInt(id, 10);
 
     if (isNaN(customerId)) {
       return NextResponse.json({ error: "Invalid ID" }, { status: 400 });
@@ -29,7 +31,10 @@ export async function GET(
     });
 
     if (!customer) {
-      return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "Customer not found" },
+        { status: 404 }
+      );
     }
 
     return NextResponse.json(customer);

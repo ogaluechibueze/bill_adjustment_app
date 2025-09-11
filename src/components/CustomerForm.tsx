@@ -250,198 +250,183 @@ const handleAccountSelect = (selected: any) => {
 
 
   return (
-    <Card className="max-w-3xl mx-auto p-6 shadow-lg rounded-2xl">
-      <CardHeader>
-        <CardTitle className="text-xl font-bold text-center">
-          Bill Adjustment Form
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-          <div className="grid md:grid-cols-2 gap-4">
-            {/* ✅ Global Account No Search */}
-            <div className="space-y-1">
-              <Label>Global Account No</Label>
-              <Controller
-                name="globalAcctNo"
-                control={control}
-                render={({ field }) => (
-                  <AsyncCreatableSelect
-                    cacheOptions
-                    defaultOptions
-                    loadOptions={loadAccounts}
-                    onChange={(val) => {
-                      field.onChange(val?.value);
-                      handleAccountSelect(val);
-                    }}
-                    value={
-                      field.value
-                        ? { label: field.value, value: field.value }
-                        : null
-                    }
-                    isClearable
-                    placeholder="Enter Account Number..."
-                    formatCreateLabel={(inputValue) => `Use "${inputValue}" as new account`}
-                  />
-                )}
+    <div className="">
+    <Card className="max-w-3xl mx-auto px-6  shadow-2xl rounded-3xl bg-white/95 backdrop-blur">
+  {/* Header */}
+  <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl -mx-6 -mt-6 mb-6 px-15 py-4 shadow-md">
+    <CardTitle className="text-xl md:text-2xl font-bold text-center text-white tracking-wide">
+      Bill Adjustment Form
+    </CardTitle>
+  </CardHeader>
+
+  <CardContent>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+      {/* Grid wrapper */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* ✅ Global Account No Search */}
+        <div className="space-y-2">
+          <Label className="font-medium text-gray-700">Global Account No</Label>
+          <Controller
+            name="globalAcctNo"
+            control={control}
+            render={({ field }) => (
+              <AsyncCreatableSelect
+                cacheOptions
+                defaultOptions
+                loadOptions={loadAccounts}
+                onChange={(val) => {
+                  field.onChange(val?.value);
+                  handleAccountSelect(val);
+                }}
+                value={
+                  field.value
+                    ? { label: field.value, value: field.value }
+                    : null
+                }
+                isClearable
+                placeholder="🔍 Search / Enter Account Number..."
+                className="rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
+                formatCreateLabel={(inputValue) =>
+                  `Use "${inputValue}" as new account`
+                }
               />
-              {errors.globalAcctNo && (
-                <p className="text-sm text-red-500">{errors.globalAcctNo.message}</p>
-              )}
-            </div>
-
-            {/* Text inputs */}
-            {[
-              ["customerName", "Customer Name"],
-              ["source", "Source"],
-              ["tariffClass", "tariffClass"],
-              ["ticketNo", "Ticket No"],
-            ].map(([k, label]) => (
-              <div key={k} className="space-y-1">
-                <Label>{label}</Label>
-                <Input {...register(k as keyof CustomerFormData)} />
-                {errors[k as keyof CustomerFormData] && (
-                  <p className="text-sm text-red-500">
-                    {errors[k as keyof CustomerFormData]?.message as string}
-                  </p>
-                )}
-              </div>
-            ))}
-
-            {/* Dropdowns */}
-            <Controller
-              name="region"
-              control={control}
-              render={({ field }) => (
-                <div className="space-y-1">
-                  <Label>Region</Label>
-                  
-                  <Select
-                    options={toOptions(regions)}
-                    value={toOptions(regions).find((o) => o.value === field.value)}
-                    onChange={(val) => field.onChange(val?.value)}
-                    isSearchable
-                  />
-                </div>
-              )}
-            />
-
-            <Controller
-              name="type"
-              control={control}
-              render={({ field }) => (
-                <div className="space-y-1">
-                  <Label>Customer Type</Label>
-                  <Select
-                    options={toOptions(types)}
-                    value={toOptions(types).find((o) => o.value === field.value)}
-                    onChange={(val) => field.onChange(val?.value)}
-                    isSearchable
-                  />
-                </div>
-              )}
-            />
-
-            <Controller
-              name="businessUnit"
-              control={control}
-              render={({ field }) => (
-                <div className="space-y-1">
-                  <Label>Business Unit</Label>
-                  <Select
-                    options={toOptions(businessUnits)}
-                    value={toOptions(businessUnits).find((o) => o.value === field.value)}
-                    onChange={(val) => field.onChange(val?.value)}
-                    isSearchable
-                  />
-                </div>
-              )}
-            />
-
-            <Controller
-              name="band"
-              control={control}
-              render={({ field }) => (
-                <div className="space-y-1">
-                  <Label>Band</Label>
-                  <Select
-                    options={toOptions(bands)}
-                    value={toOptions(bands).find((o) => o.value === field.value)}
-                    onChange={(val) => field.onChange(val?.value)}
-                    isSearchable
-                  />
-                </div>
-              )}
-            />
-
-            <Controller
-              name="feederName"
-              control={control}
-              render={({ field }) => (
-                <div className="space-y-1">
-                  <Label>Feeder</Label>
-                  <Select
-                    options={toOptions(feeders)}
-                    value={toOptions(feeders).find((o) => o.value === field.value)}
-                    onChange={(val) => field.onChange(val?.value)}
-                    isSearchable
-                  />
-                </div>
-              )}
-            />
-
-            {/* Number + Dates */}
-            <div className="space-y-1">
-              <Label>Initial Debt</Label>
-              <Input type="number" {...register("initialDebt")} />
-            </div>
-
-            <div className="space-y-1">
-              <Label>Adjustment Amount</Label>
-              <Input type="number" {...register("adjustmentAmount")}/>
-            </div>
-
-            <div className="space-y-1">
-              <Label>Balance After Adjustment</Label>
-              <Input value={balance} disabled />
-            </div>
-
-            <div className="space-y-1">
-              <Label>Adjustment Start Date</Label>
-              <Input type="date" {...register("adjustmentStartDate")} />
-            </div>
-
-            <div className="space-y-1">
-              <Label>Adjustment End Date</Label>
-              <Input type="date" {...register("adjustmentEndDate")} />
-            </div>
-          </div>
-
-          {/* Remarks */}
-          <div className="space-y-1">
-            <Label>CCRO Remarks</Label>
-            <Textarea rows={3} {...register("ccroremarks")} />
-          </div>
-
-          <Button
-            type="submit"
-            className="w-full flex items-center justify-center"
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Submitting…
-              </>
-            ) : (
-              <>
-                <Save className="w-4 h-4 mr-2" />
-                Submit
-              </>
             )}
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+          />
+          {errors.globalAcctNo && (
+            <p className="text-sm text-red-500">
+              {errors.globalAcctNo.message}
+            </p>
+          )}
+        </div>
+
+        {/* Text inputs */}
+        {[
+          ["customerName", "Customer Name"],
+          ["source", "Source"],
+          ["tariffClass", "Tariff Class"],
+          ["ticketNo", "Ticket No"],
+        ].map(([k, label]) => (
+          <div key={k} className="space-y-2">
+            <Label className="font-medium text-gray-700">{label}</Label>
+            <Input
+              {...register(k as keyof CustomerFormData)}
+              className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+            />
+            {errors[k as keyof CustomerFormData] && (
+              <p className="text-sm text-red-500">
+                {errors[k as keyof CustomerFormData]?.message as string}
+              </p>
+            )}
+          </div>
+        ))}
+
+        {/* Dropdowns */}
+        {[
+          ["region", "Region", regions],
+          ["type", "Customer Type", types],
+          ["businessUnit", "Business Unit", businessUnits],
+          ["band", "Band", bands],
+          ["feederName", "Feeder", feeders],
+        ].map(([name, label, options]) => (
+          <Controller
+            key={name as string}
+            name={name as keyof CustomerFormData}
+            control={control}
+            render={({ field }) => (
+              <div className="space-y-2">
+                <Label className="font-medium text-gray-700">{label}</Label>
+                <Select
+                  options={toOptions(options as string[])}
+                  value={toOptions(options as string[]).find(
+                    (o) => o.value === field.value
+                  )}
+                  onChange={(val) => field.onChange(val?.value)}
+                  isSearchable
+                  className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+                />
+              </div>
+            )}
+          />
+        ))}
+
+        {/* Number + Dates */}
+        <div className="space-y-2">
+          <Label>Initial Debt</Label>
+          <Input
+            type="number"
+            {...register("initialDebt")}
+            className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Adjustment Amount</Label>
+          <Input
+            type="number"
+            {...register("adjustmentAmount")}
+            className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Balance After Adjustment</Label>
+          <Input
+            value={balance}
+            disabled
+            className="bg-gray-100 text-gray-600 rounded-lg"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Adjustment Start Date</Label>
+          <Input
+            type="date"
+            {...register("adjustmentStartDate")}
+            className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label>Adjustment End Date</Label>
+          <Input
+            type="date"
+            {...register("adjustmentEndDate")}
+            className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+          />
+        </div>
+      </div>
+
+      {/* Remarks */}
+      <div className="space-y-2">
+        <Label>CCRO Remarks</Label>
+        <Textarea
+          rows={3}
+          {...register("ccroremarks")}
+          className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+        />
+      </div>
+
+      {/* Submit Button */}
+      <Button
+        type="submit"
+        className="w-full flex items-center justify-center rounded-xl py-3 font-semibold text-lg shadow-md hover:shadow-lg transition-all duration-200 bg-gradient-to-r from-blue-600 to-indigo-600"
+        disabled={isSubmitting}
+      >
+        {isSubmitting ? (
+          <>
+            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+            Submitting…
+          </>
+        ) : (
+          <>
+            <Save className="w-5 h-5 mr-2" />
+            Submit
+          </>
+        )}
+      </Button>
+    </form>
+  </CardContent>
+</Card>
+</div>
   );
 }

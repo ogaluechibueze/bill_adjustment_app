@@ -5,12 +5,20 @@ import { getServerSession } from "next-auth";
 
 export default async function Page() {
   const session = await getServerSession(authOptions);
+
   if (!session || (session as any).user.role !== "BM") {
     return <div className="card">Business Manager Dashboard</div>;
   }
 
+  const userRegion = (session as any).user.region;
+  const userBusinessUnit = (session as any).user.businessUnit;
+
   const items = await prisma.customer.findMany({
-    where: { approvalStage: "BM", status: "Pending" },
+    where: { 
+      approvalStage: "BM", 
+      status: "Pending",
+      region: userRegion,                
+    },
     orderBy: { createdAt: "desc" },
     include: {
       createdBy: { select: { username: true } },
@@ -22,7 +30,6 @@ export default async function Page() {
 
   return (
     <div className="ml-55 w-4/5 pt-12"> 
-      {/* ml-6 = move right a bit, w-4/5 = 80% width */}
       <CustomerTable data={safeItems} role="BM" />
     </div>
   );

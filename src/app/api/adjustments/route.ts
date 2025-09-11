@@ -120,9 +120,10 @@ export async function POST(req: Request) {
     const adjustment = await prisma.adjustment.create({
       data: {
         customerId: newCustomer.id,
+        adjustmentAmount: body.adjustmentAmount,
         adjustmentStartDate: new Date(body.adjustmentStartDate),
         adjustmentEndDate: new Date(body.adjustmentEndDate),
-        balanceAfterAdjustment: 0,
+        balanceAfterAdjustment: body.balanceAfterAdjustment,
       },
     });
 

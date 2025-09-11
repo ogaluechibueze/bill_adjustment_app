@@ -1,6 +1,6 @@
 "use client"
 
-import { FC, useState, useTransition } from "react";
+import { FC, useEffect, useState, useTransition } from "react";
 import { Customer } from "@prisma/client";
 import {
   Table,
@@ -26,6 +26,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import AdjustmentHistory from "./AdjustmentHistory";
 
 // 🔑 Safe version of Customer
 export type SafeCustomer = Omit<
@@ -113,12 +114,58 @@ const CustomerTable: FC<{ data: SafeCustomer[]; role: string }> = ({ data, role 
   const [comment, setComment] = useState("");
   const [loading, setLoading] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [showHistory, setShowHistory] = useState(false)
 
  const form = useForm<ViewForm>({
   resolver: zodResolver(viewSchema),
   defaultValues: selectedCustomer ?? undefined, // ✅ keep defaults safe
   values: selectedCustomer ?? undefined,        // ✅ ensure correct typing
  });
+
+ // ✅ Watch form values for recalculation
+const startDate = form.watch("adjustmentStartDate");
+const endDate = form.watch("adjustmentEndDate");
+const initialDebt = form.watch("initialDebt") || 0;
+
+// ✅ Automatically recompute adjustment amount when dates change
+useEffect(() => {
+  if (startDate && endDate) {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    if (start <= end) {
+      const months =
+        (end.getFullYear() - start.getFullYear()) * 12 +
+        (end.getMonth() - start.getMonth()) +
+        1;
+
+      const monthlyAmount = months > 0 ? initialDebt / months : 0;
+
+      form.setValue("adjustmentAmount", monthlyAmount);
+      form.setValue("balanceAfterAdjustment", initialDebt - monthlyAmount);
+    }
+  }
+}, [startDate, endDate, initialDebt, form]);
+
+ // ✅ helper for comma formatting
+  const formatNumber = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return "-";
+    return Number(value).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
+  // Date formatter
+const formatDate = (value: string | Date | null | undefined) => {
+  if (!value) return "-";
+
+  const date = value instanceof Date ? value : new Date(value);
+  if (isNaN(date.getTime())) return "-";
+
+  // Format as DD/MM/YYYY
+  return date.toLocaleDateString("en-GB");
+};
 
   // 🔥 Approve/Reject
   const handleConfirm = async () => {
@@ -145,6 +192,7 @@ const CustomerTable: FC<{ data: SafeCustomer[]; role: string }> = ({ data, role 
       setSelectedCustomer(null);
     }
   };
+  
 
   // 🔥 Submit Edit Form
   const handleEditSubmit = async (data: ViewForm) => {
@@ -178,29 +226,29 @@ const CustomerTable: FC<{ data: SafeCustomer[]; role: string }> = ({ data, role 
 
   return (
     <div className="rounded-2xl border shadow-sm overflow-hidden max-w-6xl mx-auto">
-      <Table className="w-full">
-        <TableHeader>
-          <TableRow className="bg-gray-50">
-            <TableHead>Acct No</TableHead>
-            <TableHead>Customer Name</TableHead>
-            <TableHead>Region</TableHead>
-            <TableHead>Business Unit</TableHead>
-            <TableHead>Ticket No</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Approval Stage</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
+        <Table className="w-full border-collapse text-sm">
+  <TableHeader className="">
+    <TableRow className="bg-green-50 ">
+      <TableHead className="text-gray-700 font-bold text-center">Acct No</TableHead>
+      <TableHead className="text-gray-700 font-bold text-center">Customer Name</TableHead>
+      <TableHead className="text-gray-700 font-bold text-center">Region</TableHead>
+      <TableHead className="text-gray-700 font-bold text-center">Business Unit</TableHead>
+      <TableHead className="text-gray-700 font-bold text-center">Ticket No</TableHead>
+      <TableHead className="text-gray-700 font-bold text-center">Status</TableHead>
+      <TableHead className="text-gray-700 font-bold text-center">Approval Stage</TableHead>
+    </TableRow>
+  </TableHeader>
+
         <TableBody>
           {data.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={24} className="text-center text-gray-500 py-6">
+              <TableCell colSpan={24} className="text-center text-gray-500 py-6 items-center">
                 No records found
               </TableCell>
             </TableRow>
           ) : (
             data.map((item) => (
-              <TableRow key={item.id} className="hover:bg-gray-50 transition">
+              <TableRow key={item.id} className="hover:bg-gray-50 transition text-center">
                 <TableCell>{item.globalAcctNo}</TableCell>
                 <TableCell>{item.customerName}</TableCell>
                 <TableCell>{item.region ?? "-"}</TableCell>
@@ -215,41 +263,88 @@ const CustomerTable: FC<{ data: SafeCustomer[]; role: string }> = ({ data, role 
                       <DialogTrigger asChild>
                         <Button
                           size="sm"
-                          variant="outline"
+                          className="hover:bg-gray-50 hover:text-black"
                           onClick={() => setSelectedCustomer(item)}
                         >
                           View
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="max-w-4xl w-full max-h-[80vh] overflow-y-auto">
+                      <DialogContent className="max-w-6xl w-full max-h-[80vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>Customer Details</DialogTitle>
                         </DialogHeader>
                         <form className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                        {Object.entries(form.getValues())
-                          .filter(
-                            ([key]) =>
-                              !["id", "updatedAt", "createdById", "createdAt"].includes(key)
-                          )
-                          .map(([key, value]) => {
-                            let displayValue = value ?? "-";
+                          {Object.entries(form.getValues())
+                            .filter(([key]) => !["id", "updatedAt", "createdById", "createdAt"].includes(key))
+                            .map(([key, value]) => {
+                              let displayValue = value ?? "-";
 
-                            if (key === "createdBy" && value && typeof value === "object") {
-                              displayValue = (value as any).username ?? "-"; // 👈 safely extract username
-                            }
+                              if (key === "createdBy" && value && typeof value === "object") {
+                                displayValue = (value as any).username ?? "-";
+                              }
 
-                            // ✅ get the label from zod schema metadata
-                            const schemaShape = (viewSchema.shape as any)[key];
-                            const label = schemaShape?.description ?? key;
+                              const schemaShape = (viewSchema.shape as any)[key];
+                              const label = schemaShape?.description ?? key;
 
-                            return (
-                              <div key={key}>
-                                <Label className=" text-green-500">{label}</Label>
-                                <Input value={String(displayValue)} readOnly />
+                              const remarksFields = [
+                                "ccroremarks",
+                                "hccremarks",
+                                "bmremarks",
+                                "rhremarks",
+                                "raremarks",
+                                "iaremarks",
+                                "ciaremarks",
+                                "mdremarks",
+                              ];
+
+                              const dateFields = ["adjustmentStartDate", "adjustmentEndDate"];
+
+                              const amountFields = [
+                                "adjustmentAmount",
+                                "initialDebt",
+                                "balanceAfterAdjustment",
+                              ];
+
+                              if (dateFields.includes(key)) {
+                                displayValue = formatDate(value as string | Date | null | undefined);
+                              } else if (amountFields.includes(key)) {
+                                displayValue = formatNumber(value as number | null | undefined);
+                              }
+
+                              return (
+                                <div key={key} className="space-y-1">
+                                  <Label className="text-green-500">{label}</Label>
+                                  {remarksFields.includes(key.toLowerCase()) ? (
+                                    <Textarea
+                                      value={String(displayValue)}
+                                      readOnly
+                                      className="resize-none bg-gray-50"
+                                    />
+                                  ) : (
+                                    <Input value={String(displayValue)} readOnly className="bg-gray-50" />
+                                  )}
+                                </div>
+                              );
+                            })}
+                        </form>
+
+                        {/* ✅ Toggle button */}
+                        {selectedCustomer && (
+                          <div className="mt-6">
+                            <Button
+                              size="sm"
+                              onClick={() => setShowHistory((prev) => !prev)}
+                            >
+                              {showHistory ? "Hide Adjustment History" : "Show Adjustment History"}
+                            </Button>
+
+                            {showHistory && (
+                              <div className="mt-4">
+                                <AdjustmentHistory customerId={selectedCustomer.id} />
                               </div>
-                            );
-                          })}
-                      </form>
+                            )}
+                          </div>
+                        )}
                       </DialogContent>
                     </Dialog>
 
@@ -258,8 +353,7 @@ const CustomerTable: FC<{ data: SafeCustomer[]; role: string }> = ({ data, role 
                       <>
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="text-green-600 border-green-600 hover:bg-green-50"
+                          className="text-gray-100 hover:bg-gray-50 bg-green-600 hover:text-black"
                           onClick={() => {
                             setSelectedCustomer(item);
                             setAction("approve");
@@ -270,8 +364,8 @@ const CustomerTable: FC<{ data: SafeCustomer[]; role: string }> = ({ data, role 
 
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="text-red-600 border-red-600 hover:bg-red-50"
+                          variant="destructive"
+                          className=" hover:bg-red-50 hover:text-black"
                           onClick={() => {
                             setSelectedCustomer(item);
                             setAction("reject");
@@ -356,60 +450,94 @@ const CustomerTable: FC<{ data: SafeCustomer[]; role: string }> = ({ data, role 
       </Dialog>
 
       {/* Edit Dialog */}
-      <Dialog open={editDialogOpen} onOpenChange={() => setEditDialogOpen(false)}>
-        <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Customer</DialogTitle>
-          </DialogHeader>
+<Dialog open={editDialogOpen} onOpenChange={() => setEditDialogOpen(false)}>
+  <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-2xl shadow-lg">
+    <DialogHeader>
+      <DialogTitle className="text-xl font-semibold text-green-600">
+        Edit Customer
+      </DialogTitle>
+    </DialogHeader>
 
-          {selectedCustomer && (
-            <form
-              className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4"
-              onSubmit={form.handleSubmit(handleEditSubmit)}
-            >
-              {Object.entries(form.getValues())
-                .filter(([key]) => !["id", "updatedAt", "createdById", "createdAt"].includes(key))
-                .map(([key, value]) => (
-                  <div key={key} className="space-y-1">
-                    <Label className="capitalize">{key}</Label>
-                    {["hccremarks", "bmremarks","rhremarks","raremarks","iaremarks","ciaremarks", "mdremarks"].includes(key) &&
-                    role === "CCRO" ? (
-                      <Textarea {...form.register(key as keyof ViewForm)} readOnly />
-                    ) : key === "balanceAfterAdjustment" ? (
-                      <Input
-                        value={
-                          Number(form.getValues("initialDebt") || 0) -
-                          Number(form.getValues("adjustmentAmount") || 0)
-                        }
-                        disabled
-                      />
-                    ) : key.includes("remarks") ? (
-                      <Textarea {...form.register(key as keyof ViewForm)} />
-                    ) : (
-                      <Input {...form.register(key as keyof ViewForm)} />
-                    )}
-                  </div>
-                ))}
+    {selectedCustomer && (
+      <form
+        className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6"
+        onSubmit={form.handleSubmit(handleEditSubmit)}
+      >
+        {Object.entries(form.getValues())
+          .filter(([key]) => !["id", "updatedAt", "createdById", "createdAt", "createdBy", "approvalStage"].includes(key))
+          .map(([key, value]) => (
+            <div key={key} className="space-y-1">
+              <Label className="capitalize text-sm font-medium text-gray-700">
+                {key}
+              </Label>
 
-              <div className="flex justify-end gap-2 col-span-2 mt-4">
-                <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={loading}>
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      Saving...
-                    </>
-                  ) : (
-                    "Save Changes"
-                  )}
-                </Button>
-              </div>
-            </form>
-          )}
-        </DialogContent>
-      </Dialog>
+              {/* 🔑 Special handling */}
+              {key === "adjustmentStartDate" || key === "adjustmentEndDate" ? (
+                <Input
+                  type="date"
+                  {...form.register(key as keyof ViewForm)}
+                  className="border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-lg"
+                />
+              ) : key === "balanceAfterAdjustment" ? (
+                <Input
+                  value={
+                    Number(form.getValues("initialDebt") || 0) -
+                    Number(form.getValues("adjustmentAmount") || 0)
+                  }
+                  disabled
+                  className="bg-gray-100 rounded-lg"
+                />
+              ) : key === "adjustmentAmount" ? (
+                <Input
+                  value={formatNumber(form.getValues("adjustmentAmount"))}
+                  disabled
+                  className="bg-gray-100 rounded-lg"
+                />
+              ) : ["hccremarks", "bmremarks","rhremarks","raremarks","iaremarks","ciaremarks", "mdremarks"].includes(key) && role === "CCRO" ? (
+                <Textarea {...form.register(key as keyof ViewForm)} readOnly />
+              ) : key.includes("remarks") ? (
+                <Textarea
+                  {...form.register(key as keyof ViewForm)}
+                  className="border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-lg"
+                />
+              ) : (
+                <Input
+                  {...form.register(key as keyof ViewForm)}
+                  className="border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-lg"
+                />
+              )}
+            </div>
+          ))}
+
+        <div className="flex justify-end gap-3 col-span-2 mt-6">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setEditDialogOpen(false)}
+            className="rounded-lg"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={loading}
+            className="bg-green-600 hover:bg-green-700 text-white rounded-lg"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Saving...
+              </>
+            ) : (
+              "Save Changes"
+            )}
+          </Button>
+        </div>
+      </form>
+    )}
+  </DialogContent>
+</Dialog>
+
     </div>
   );
 };
