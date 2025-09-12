@@ -101,7 +101,7 @@ export default function Sidebar({ role }: SidebarProps) {
         {/* Bottom Section */}
         <div className="px-4 py-6 border-t border-white/20 space-y-4 text-sm">
           <div className="text-gray-200">
-            Signed in as:{" "}
+            Welcome{" "}
             <b>{session?.user?.username ?? session?.user?.email ?? "Guest"}</b>
           </div>
           <LogoutButton />

@@ -22,8 +22,8 @@ export default function Navbar() {
 
   const links = [
     { href: "/dashboard/ccro", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/dashboard/ccro/adjustment", label: "Adjustment Form", icon: Users },
-    { href: "/dashboard/ccro/capture", label: "Compute Adjustment", icon: ClipboardList },
+    { href: "/dashboard/ccro/adjustment", label: "Unmetered Customer", icon: Users },
+    { href: "/dashboard/ccro/capture", label: "Metered Customer", icon: ClipboardList },
     { href: "/dashboard/ccro/reports", label: "View Report", icon: FileText },
   ];
 

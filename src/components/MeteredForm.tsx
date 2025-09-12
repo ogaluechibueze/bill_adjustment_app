@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Loader2, Save } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 
 
 const AsyncCreatableSelect = dynamic(
@@ -51,6 +51,10 @@ const formSchema = z.object({
 
   useDefaultCapUnit: z.boolean().optional(),
   defaultCapUnit: z.coerce.number().optional(),
+  avgConsumption: z.coerce.number().optional(),
+  previousReading: z.coerce.number().optional(),
+  presentReading: z.coerce.number().optional(),
+
 });
 
 
@@ -122,7 +126,9 @@ export default function CustomerForm() {
       band: "",
       feederName: "",
       source: "",
-      customerType: "",
+      customerType: "NON MD METERED",
+      previousReading: undefined,
+      presentReading: undefined,
       tariffClass: "",
       ticketNo: "",
       initialDebt: Number(""),
@@ -133,96 +139,89 @@ export default function CustomerForm() {
     },
   });
 
-  const initialDebt = Number(watch("initialDebt") || 0);
-  const adjustmentAmount = Number(watch("adjustmentAmount") || 0);
-  const balance = initialDebt - adjustmentAmount;
 
+  // 📌 Watch values
+  const prevReading = Number(watch("previousReading") || 0);
+  const presReading = Number(watch("presentReading") || 0);
   const startDate = watch("adjustmentStartDate");
   const endDate = watch("adjustmentEndDate");
-  const feederId = watch("feederName");
-  const type = watch("customerType"); // assuming type maps to tariffClass
+  const initialDebt = Number(watch("initialDebt") || 0);
+  const adjustmentAmount = Number(watch("adjustmentAmount") || 0);
 
-   // 🔥 Auto-calc adjustment amount when inputs change
- useEffect(() => {
-  async function fetchAdjustment() {
-    if (!startDate || !endDate) return;
+  // ✅ Compute consumption
+  const consumption = useMemo(() => {
+    return presReading > prevReading ? presReading - prevReading : 0;
+  }, [presReading, prevReading]);
 
-    if (watch("useDefaultCapUnit") && watch("defaultCapUnit")) {
-      const months =
+  // ✅ Compute average consumption per day
+  const avgConsumption = useMemo(() => {
+    if (!startDate || !endDate || !consumption) return 0;
+     const months =
       (new Date(endDate).getFullYear() - new Date(startDate).getFullYear()) * 12 + 1 +
       (new Date(endDate).getMonth() - new Date(startDate).getMonth());
+    return months > 0 ? consumption / months : 0;
+  }, [startDate, endDate, consumption]);
 
-      const adjustment = months * Number(watch("defaultCapUnit") || 0);
+  // ✅ Auto-update adjustmentAmount based on avgConsumption
+  useEffect(() => {
+    async function calcAdjustment() {
+      if (!avgConsumption || !watch("tariffClassId") || !watch("feederId"))
+        return;
 
-            reset({
-        ...getValues(),
-        adjustmentAmount: Number(adjustment.toFixed(2)),
-      });
-      return;
-    }
+      try {
+        const res = await fetch("/api/calculate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            feederId: watch("feederId"),
+            tariffClassId: watch("tariffClassId"),
+            startDate,
+            endDate,
+          }),
+        });
 
-    // else → normal API calc
-    if (!watch("feederId") || !watch("tariffClassId")) return;
-
-    try {
-      const res = await fetch("/api/calculate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          feederId: watch("feederId"),
-          tariffClassId: watch("tariffClassId"),
-          startDate,
-          endDate,
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        reset((prev) => ({
-          ...prev,
-          adjustmentAmount: data.adjustmentAmount.toFixed(2),
-        }));
+        if (res.ok) {
+          const data = await res.json();
+          reset((prev) => ({
+            ...prev,
+            adjustmentAmount: Number(data.adjustmentAmount.toFixed(2)),
+          }));
+        }
+      } catch (err) {
+        console.error("Error calculating metered adjustment:", err);
       }
-    } catch (err) {
-      console.error("Error calculating adjustment:", err);
     }
-  }
 
-  fetchAdjustment();
-}, [
-  startDate,
-  endDate,
-  watch("feederId"),
-  watch("tariffClassId"),
-  watch("useDefaultCapUnit"),
-  watch("defaultCapUnit"),
-  reset,
-]);
+    calcAdjustment();
+  }, [avgConsumption, startDate, endDate, watch("feederId"), watch("tariffClassId"), reset]);
 
-
+  const balance = initialDebt - adjustmentAmount;
 
   // ✅ Submit handler
   async function onSubmit(data: CustomerFormData) {
-    const payload = { ...data, balanceAfterAdjustment: balance };
+    const payload = {
+      ...data,
+      balanceAfterAdjustment: balance,
+    };
+
     try {
-      const res = await fetch("/api/adjustments", {
+      const res = await fetch("/api/adjustments/metered", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
       if (res.ok) {
-        alert("the form has been submitted successfully ✅");
+        alert("Metered form submitted successfully ✅");
         reset();
       } else {
-        alert("❌ Error submitting the form");
+        alert("❌ Error submitting metered form");
       }
     } catch (err) {
       console.error(err);
       alert("⚠️ Network error");
     }
   }
-
   // ✅ Helper to convert to react-select options
   const toOptions = (arr: string[]) => arr.map((v) => ({ label: v, value: v }));
 
@@ -282,11 +281,11 @@ const handleAccountSelect = (selected: any) => {
 
   return (
     <div className="">
-    <Card className="max-w-3xl mx-auto px-6  shadow-2xl rounded-3xl bg-white/95 backdrop-blur">
+    <Card className="max-w-3xl mx-auto px-6 shadow-2xl rounded-3xl bg-white/95 backdrop-blur">
   {/* Header */}
   <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl -mx-6 -mt-6 mb-6 px-15 py-4 shadow-md">
     <CardTitle className="text-xl md:text-2xl font-bold text-center text-white tracking-wide">
-      Unmetered Customer Bill Adjustment Form
+      Metered Customer Bill Adjustment Form
     </CardTitle>
   </CardHeader>
 
@@ -390,7 +389,7 @@ const handleAccountSelect = (selected: any) => {
           />
         </div>
 
-                    <div className="space-y-2">
+                    {/* <div className="space-y-2">
               <Label className="font-medium text-gray-700 flex items-center justify-between">
                 Use Default CAP Unit
                 <Controller
@@ -405,10 +404,10 @@ const handleAccountSelect = (selected: any) => {
                   )}
                 />
               </Label>
-            </div>
+            </div> */}
 
             {/* Conditionally show CAP Unit input */}
-            {watch("useDefaultCapUnit") && (
+            {/* {watch("useDefaultCapUnit") && (
               <div className="space-y-2">
                 <Label>Default CAP Unit</Label>
                 <Input
@@ -417,8 +416,41 @@ const handleAccountSelect = (selected: any) => {
                   className="rounded-lg bg-green-300 border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
                 />
               </div>
-            )}
+            )} */}
 
+    <div className="space-y-2">
+      <Label>Previous Reading</Label>
+      <Input
+        type="number"
+        {...register("previousReading")}
+        className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+      />
+    </div>
+
+    <div className="space-y-2">
+      <Label>Present Reading</Label>
+      <Input
+        type="number"
+        {...register("presentReading")}
+        className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+      />
+    </div>
+
+    <div className="space-y-2">
+      <Label>Consumption Value (kWh)</Label>
+      <Input
+        type="number"
+        value={consumption}
+        disabled
+        className="bg-gray-100 text-gray-600 rounded-lg"
+      />
+    </div>
+
+     {/* Average Consumption (auto) */}
+            <div className="space-y-2">
+              <Label>Avg Consumption per Day</Label>
+              <Input value={avgConsumption.toFixed(2)} disabled className="bg-gray-100" />
+            </div>
         <div className="space-y-2">
           <Label>Adjustment Amount</Label>
           <Input

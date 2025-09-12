@@ -102,7 +102,7 @@ export async function POST(req: Request) {
         ccroremarks: body.ccroremarks ?? null,
         status: "Pending",
         approvalStage: "HCC",
-        createdById: userId,
+        createdById: Number(body.createdById),
       },
       include: {
         createdBy: { select: { username: true } },

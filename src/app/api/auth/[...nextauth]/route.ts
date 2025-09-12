@@ -1,7 +1,9 @@
 import { prisma } from "@/lib/prisma";
-import NextAuth, { NextAuthOptions } from "next-auth";
+import NextAuth, { type NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
+import bcrypt from "bcryptjs";
 
+// 🔹 Extend NextAuth types
 declare module "next-auth" {
   interface Session {
     user: {
@@ -32,7 +34,7 @@ declare module "next-auth/jwt" {
   }
 }
 
-const authOptions: NextAuthOptions = {
+export const authOptions: NextAuthOptions = {
   providers: [
     CredentialsProvider({
       name: "Credentials",
@@ -40,27 +42,35 @@ const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-     async authorize(credentials) {
-  // ✅ Runtime check
-  if (!credentials?.email || !credentials?.password) {
-    throw new Error("Missing email or password");
-  }
+      async authorize(credentials) {
+        // ✅ Runtime check
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
 
-  const user = await prisma.user.findUnique({
-    where: { email: credentials.email },
-  });
+        // 🔍 Find user by email
+        const user = await prisma.user.findUnique({
+          where: { email: credentials.email },
+        });
 
-  if (user && user.password === credentials.password) {
-    return {
-      id: String(user.id),        // 👈 force to string
-      email: user.email,
-      username: user.username ?? undefined,
-      role: user.role ?? undefined,
-    };
-  }
+        if (!user) return null;
 
-  return null;
-},
+        // 🔑 Compare hashed password
+        const isValid = await bcrypt.compare(
+          credentials.password,
+          user.password
+        );
+
+        if (!isValid) return null;
+
+        // ✅ Return minimal safe user object
+        return {
+          id: String(user.id),
+          email: user.email,
+          username: user.username ?? undefined,
+          role: user.role ?? undefined,
+        };
+      },
     }),
   ],
   callbacks: {
@@ -73,7 +83,7 @@ const authOptions: NextAuthOptions = {
       return token;
     },
     async session({ session, token }) {
-      if (token) {
+      if (token && session.user) {
         session.user.id = token.id as string;
         session.user.username = token.username;
         session.user.role = token.role;
@@ -82,10 +92,10 @@ const authOptions: NextAuthOptions = {
     },
   },
   session: {
-    strategy: "jwt", // ✅ recommended with credentials provider
+    strategy: "jwt", // ✅ required for credentials
   },
   pages: {
-    signIn: "/login", // redirect users to your login page
+    signIn: "/login",
   },
 };
 
