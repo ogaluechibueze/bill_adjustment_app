@@ -4,7 +4,7 @@ import dynamic from "next/dynamic";
 import { Switch } from "@/components/ui/switch";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, Controller, SubmitHandler } from "react-hook-form";
 import {
   Card,
   CardHeader,
@@ -16,7 +16,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Loader2, Save } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { StatusDialog } from "./StatusDialog";
 
 
 const AsyncCreatableSelect = dynamic(
@@ -48,9 +49,6 @@ const formSchema = z.object({
   adjustmentStartDate: z.string().optional(),
   adjustmentEndDate: z.string().optional(),
   ccroremarks: z.string().optional(),
-
-  useDefaultCapUnit: z.boolean().optional(),
-  defaultCapUnit: z.coerce.number().optional(),
   avgConsumption: z.coerce.number().optional(),
   previousReading: z.coerce.number().optional(),
   presentReading: z.coerce.number().optional(),
@@ -108,12 +106,19 @@ type CustomerFormData = z.infer<typeof formSchema>;
 
 
 export default function CustomerForm() {
+   const [dialogOpen, setDialogOpen] = useState(false);
+    const [dialogConfig, setDialogConfig] = useState<{
+    status: "success" | "error" | "warning" | null;
+    title: string;
+    message: string;
+    }>({ status: null, title: "", message: "" });
   const {
     register,
     handleSubmit,
     reset,
     watch,
     getValues,
+    setValue,
     control,
     formState: { errors, isSubmitting },
   } = useForm<CustomerFormData>({
@@ -147,6 +152,7 @@ export default function CustomerForm() {
   const endDate = watch("adjustmentEndDate");
   const initialDebt = Number(watch("initialDebt") || 0);
   const adjustmentAmount = Number(watch("adjustmentAmount") || 0);
+  const balance = initialDebt - adjustmentAmount;
 
   // ✅ Compute consumption
   const consumption = useMemo(() => {
@@ -162,66 +168,106 @@ export default function CustomerForm() {
     return months > 0 ? consumption / months : 0;
   }, [startDate, endDate, consumption]);
 
+// Keep avgConsumption updated in form state
+useEffect(() => {
+  if (!isNaN(avgConsumption)) {
+    setValue("avgConsumption", avgConsumption);
+  }
+}, [avgConsumption, setValue]);
+
   // ✅ Auto-update adjustmentAmount based on avgConsumption
-  useEffect(() => {
-    async function calcAdjustment() {
-      if (!avgConsumption || !watch("tariffClassId") || !watch("feederId"))
-        return;
+useEffect(() => {
+  async function fetchAdjustment() {
+    if (!startDate || !endDate) return;
 
-      try {
-        const res = await fetch("/api/calculate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            feederId: watch("feederId"),
-            tariffClassId: watch("tariffClassId"),
-            startDate,
-            endDate,
-          }),
-        });
+    try {
+      const res = await fetch("/api/calculate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          feederId: watch("feederId"),
+          tariffClassId: watch("tariffClassId"),
+          startDate,
+          endDate,
+          avgConsumption: watch("avgConsumption"), // 👈 frontend always passes this now
+        }),
+      });
 
-        if (res.ok) {
-          const data = await res.json();
-          reset((prev) => ({
-            ...prev,
-            adjustmentAmount: Number(data.adjustmentAmount.toFixed(2)),
-          }));
-        }
-      } catch (err) {
-        console.error("Error calculating metered adjustment:", err);
+      if (res.ok) {
+        const data = await res.json();
+        setValue("adjustmentAmount", Number(data.adjustmentAmount.toFixed(2)));
       }
+    } catch (err) {
+      console.error("Error calculating adjustment:", err);
     }
+  }
 
-    calcAdjustment();
-  }, [avgConsumption, startDate, endDate, watch("feederId"), watch("tariffClassId"), reset]);
+  if (watch("tariffClassId") && watch("avgConsumption") !== undefined) {
+    fetchAdjustment();
+  }
+}, [startDate, endDate, watch("feederId"), watch("tariffClassId"), watch("avgConsumption"), setValue]);
 
-  const balance = initialDebt - adjustmentAmount;
-
-  // ✅ Submit handler
-  async function onSubmit(data: CustomerFormData) {
+ //Submit handler
+  const onSubmit: SubmitHandler<CustomerFormData> = async (data) => {
     const payload = {
       ...data,
       balanceAfterAdjustment: balance,
     };
+  try {
+    const res = await fetch("/api/adjustments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-    try {
-      const res = await fetch("/api/adjustments/metered", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+    if (res.ok) {
+      setDialogConfig({
+        status: "success",
+        title: "Success ✅",
+        message: "The form has been submitted successfully.",
       });
-
-      if (res.ok) {
-        alert("Metered form submitted successfully ✅");
-        reset();
-      } else {
-        alert("❌ Error submitting metered form");
-      }
-    } catch (err) {
-      console.error(err);
-      alert("⚠️ Network error");
+      setDialogOpen(true);
+      reset();
+    } else if (res.status === 400) {
+      setDialogConfig({
+        status: "warning",
+        title: "Validation Error",
+        message: "Some fields are missing or invalid. Please check and try again.",
+      });
+      setDialogOpen(true);
+    } else if (res.status === 409) {
+      setDialogConfig({
+        status: "error",
+        title: "Duplicate Account",
+        message: "An account with this Global Account Number already exists. Please use a different number.",
+      });
+      setDialogOpen(true);
+    } else if (res.status === 500) {
+      setDialogConfig({
+        status: "error",
+        title: "Server Error",
+        message: "Something went wrong on our end. Please try again later.",
+      });
+      setDialogOpen(true);
+    } else {
+      setDialogConfig({
+        status: "error",
+        title: "Unexpected Error",
+        message: `Unexpected error (code ${res.status}).`,
+      });
+      setDialogOpen(true);
     }
+  } catch (err) {
+    console.error("Network error:", err);
+    setDialogConfig({
+      status: "error",
+      title: "Network Error",
+      message: "Please check your internet connection and try again.",
+    });
+    setDialogOpen(true);
   }
+};
+
   // ✅ Helper to convert to react-select options
   const toOptions = (arr: string[]) => arr.map((v) => ({ label: v, value: v }));
 
@@ -280,259 +326,235 @@ const handleAccountSelect = (selected: any) => {
 
 
   return (
-    <div className="">
-    <Card className="max-w-3xl mx-auto px-6 shadow-2xl rounded-3xl bg-white/95 backdrop-blur">
-  {/* Header */}
-  <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-2xl -mx-6 -mt-6 mb-6 px-15 py-4 shadow-md">
-    <CardTitle className="text-xl md:text-2xl font-bold text-center text-white tracking-wide">
-      Metered Customer Bill Adjustment Form
-    </CardTitle>
-  </CardHeader>
+   <div className="">
+  <Card className="max-w-4xl mx-auto mr-4 px-6 py-4 shadow-xl rounded-2xl bg-white/95 backdrop-blur">
+    {/* Header */}
+    <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl -mx-6 -mt-6 mb-6 px-6 py-3 shadow-md">
+      <CardTitle className="text-lg md:text-xl font-bold text-center text-white tracking-wide">
+        Metered Customer Bill Adjustment Form
+      </CardTitle>
+    </CardHeader>
 
-  <CardContent>
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-      {/* Grid wrapper */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* ✅ Global Account No Search */}
-        <div className="space-y-2">
-          <Label className="font-medium text-gray-700">Global Account No</Label>
-          <Controller
-            name="globalAcctNo"
-            control={control}
-            render={({ field }) => (
-              <AsyncCreatableSelect
-                cacheOptions
-                defaultOptions
-                loadOptions={loadAccounts}
-                onChange={(val) => {
-                  field.onChange(val?.value);
-                  handleAccountSelect(val);
-                }}
-                value={
-                  field.value
-                    ? { label: field.value, value: field.value }
-                    : null
-                }
-                isClearable
-                placeholder="🔍 Search / Enter Account Number..."
-                className="rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
-                formatCreateLabel={(inputValue) =>
-                  `Use "${inputValue}" as new account`
-                }
-              />
-            )}
-          />
-          {errors.globalAcctNo && (
-            <p className="text-sm text-red-500">
-              {errors.globalAcctNo.message}
-            </p>
-          )}
-        </div>
-
-        {/* Text inputs */}
-        {[
-          ["customerName", "Customer Name"],
-          ["source", "Source"],
-          ["tariffClass", "Tariff Class"],
-          ["ticketNo", "Ticket No"],
-        ].map(([k, label]) => (
-          <div key={k} className="space-y-2">
-            <Label className="font-medium text-gray-700">{label}</Label>
-            <Input
-              {...register(k as keyof CustomerFormData)}
-              className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+    <CardContent>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+        
+        {/* Global Account No (Top Right) */}
+        <div className="flex justify-end">
+          <div className="w-full md:w-72 space-y-1">
+            <Label className="text-sm font-medium text-gray-700">Enter Global Account Number</Label>
+            <Controller
+              name="globalAcctNo"
+              control={control}
+              render={({ field }) => (
+                <AsyncCreatableSelect
+                  cacheOptions
+                  defaultOptions
+                  loadOptions={loadAccounts}
+                  onChange={(val) => {
+                    field.onChange(val?.value);
+                    handleAccountSelect(val);
+                  }}
+                  value={
+                    field.value ? { label: field.value, value: field.value } : null
+                  }
+                  isClearable
+                  placeholder="🔍 Search / Enter Account Number"
+                  className="text-sm rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
+                  formatCreateLabel={(inputValue) =>
+                    `Use "${inputValue}" as new account`
+                  }
+                />
+              )}
             />
-            {errors[k as keyof CustomerFormData] && (
-              <p className="text-sm text-red-500">
-                {errors[k as keyof CustomerFormData]?.message as string}
-              </p>
+            {errors.globalAcctNo && (
+              <p className="text-xs text-red-500">{errors.globalAcctNo.message}</p>
             )}
           </div>
-        ))}
-
-        {/* Dropdowns */}
-        {[
-          ["region", "Region", regions],
-          ["type", "Customer Type", types],
-          ["businessUnit", "Business Unit", businessUnits],
-          ["band", "Band", bands],
-          ["feederName", "Feeder", feeders],
-        ].map(([name, label, options]) => (
-          <Controller
-            key={name as string}
-            name={name as keyof CustomerFormData}
-            control={control}
-            render={({ field }) => (
-              <div className="space-y-2">
-                <Label className="font-medium text-gray-700">{label}</Label>
-                <Select
-                  options={toOptions(options as string[])}
-                  value={toOptions(options as string[]).find(
-                    (o) => o.value === field.value
-                  )}
-                  onChange={(val) => field.onChange(val?.value)}
-                  isSearchable
-                  className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
-                />
-              </div>
-            )}
-          />
-        ))}
-
-        {/* Number + Dates */}
-        <div className="space-y-2">
-          <Label>Initial Debt</Label>
-          <Input
-            type="number"
-            {...register("initialDebt")}
-            className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
-          />
         </div>
 
-                    {/* <div className="space-y-2">
-              <Label className="font-medium text-gray-700 flex items-center justify-between">
-                Use Default CAP Unit
-                <Controller
-                  name="useDefaultCapUnit"
-                  control={control}
-                  defaultValue={false}
-                  render={({ field }) => (
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  )}
-                />
-              </Label>
-            </div> */}
-
-            {/* Conditionally show CAP Unit input */}
-            {/* {watch("useDefaultCapUnit") && (
-              <div className="space-y-2">
-                <Label>Default CAP Unit</Label>
+        {/* Customer Info Section */}
+        <div>
+          <h3 className="text-lg font-bold text-gray-800 mb-3">📋 Customer Informations</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            {[
+              ["customerName", "Customer Name"],
+              ["source", "Source"],
+              ["tariffClass", "Tariff Class"],
+              ["ticketNo", "Ticket Number"],
+            ].map(([k, label]) => (
+              <div key={k} className="space-y-1">
+                <Label className="text-sm font-medium">{label}</Label>
                 <Input
-                  type="number"
-                  {...register("defaultCapUnit", { valueAsNumber: true })}
-                  className="rounded-lg bg-green-300 border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+                  {...register(k as keyof CustomerFormData)}
+                  className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
                 />
               </div>
-            )} */}
+            ))}
 
-    <div className="space-y-2">
-      <Label>Previous Reading</Label>
-      <Input
-        type="number"
-        {...register("previousReading")}
-        className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
-      />
-    </div>
+            {[
+              ["region", "Region", regions],
+              ["type", "Customer Type", types],
+              ["businessUnit", "Business Unit", businessUnits],
+              ["band", "Band", bands],
+              ["feederName", "Feeder Name", feeders],
+            ].map(([name, label, options]) => (
+              <Controller
+                key={name as string}
+                name={name as keyof CustomerFormData}
+                control={control}
+                render={({ field }) => (
+                  <div className="space-y-1">
+                    <Label className="text-sm font-medium">{label}</Label>
+                    <Select
+                      options={toOptions(options as string[])}
+                      value={toOptions(options as string[]).find(
+                        (o) => o.value === field.value
+                      )}
+                      onChange={(val) => field.onChange(val?.value)}
+                      isSearchable
+                      className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+                    />
+                  </div>
+                )}
+              />
+            ))}
 
-    <div className="space-y-2">
-      <Label>Present Reading</Label>
-      <Input
-        type="number"
-        {...register("presentReading")}
-        className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
-      />
-    </div>
-
-    <div className="space-y-2">
-      <Label>Consumption Value (kWh)</Label>
-      <Input
-        type="number"
-        value={consumption}
-        disabled
-        className="bg-gray-100 text-gray-600 rounded-lg"
-      />
-    </div>
-
-     {/* Average Consumption (auto) */}
-            <div className="space-y-2">
-              <Label>Avg Consumption per Day</Label>
-              <Input value={avgConsumption.toFixed(2)} disabled className="bg-gray-100" />
+            {/* Initial Debt */}
+            <div className="space-y-1">
+              <Label className="text-sm font-medium">Initial Debt</Label>
+              <Input
+                type="number"
+                {...register("initialDebt")}
+                className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+              />
             </div>
-        <div className="space-y-2">
-          <Label>Adjustment Amount</Label>
-          <Input
-            type="number"
-            {...register("adjustmentAmount")}
-            className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
-            disabled
+          </div>
+        </div>
+
+        {/* Readings & Calculations */}
+        <div>
+          <h3 className="text-lg font-bold text-gray-800 mb-3">⚡Meter Reading & Calculations</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            <div className="space-y-1">
+              <Label>Previous Reading</Label>
+              <Input
+                type="number"
+                {...register("previousReading")}
+                className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Present Reading</Label>
+              <Input
+                type="number"
+                {...register("presentReading")}
+                className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Consumption Value (kWh)</Label>
+              <Input
+                type="number"
+                value={consumption}
+                disabled
+                className="text-sm bg-gray-100 text-gray-600 rounded-lg"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Avg Consumption per Month</Label>
+              <Input
+                value={avgConsumption.toFixed(2)}
+                disabled
+                className="text-sm bg-gray-100 text-gray-600 rounded-lg"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Adjustment Amount</Label>
+              <Input
+                type="number"
+                {...register("adjustmentAmount")}
+                disabled
+                className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Balance After Adjustment</Label>
+              <Input
+                value={balance}
+                disabled
+                className="text-sm bg-gray-100 text-gray-600 rounded-lg"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Date Range */}
+        <div>
+          <h3 className="text-lg font-bold text-gray-800 mb-3">📅 Adjustment Period</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="space-y-1">
+              <Label>Adjustment Start Date</Label>
+              <Input
+                type="date"
+                {...register("adjustmentStartDate")}
+                className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+                max={endDate || undefined}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label>Adjustment End Date</Label>
+              <Input
+                type="date"
+                {...register("adjustmentEndDate")}
+                className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+                min={startDate || undefined}
+                max={new Date().toISOString().split("T")[0]}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Remarks */}
+        <div>
+          <h3 className="text-lg font-bold text-gray-800 mb-3">📝 CCRO Remarks</h3>
+          <Textarea
+            rows={3}
+            {...register("ccroremarks")}
+            className="w-full text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
           />
         </div>
 
-        <div className="space-y-2">
-          <Label>Balance After Adjustment</Label>
-          <Input
-            value={balance}
-            disabled
-            className="bg-gray-100 text-gray-600 rounded-lg"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label>Adjustment Start Date</Label>
-          <Input
-            type="date"
-            {...register("adjustmentStartDate")}
-            className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
-            max={endDate || undefined} 
-          />
-          {startDate && endDate && startDate > endDate && (
-              <p className="text-sm text-red-500">
-                Start date cannot be later than end date
-              </p>
-            )}
-        </div>
-
-        <div className="space-y-2">
-          <Label>Adjustment End Date</Label>
-          <Input
-            type="date"
-            {...register("adjustmentEndDate")}
-            className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
-            min={startDate || undefined} 
-            max={new Date().toISOString().split("T")[0]}
-          />
-          {endDate && startDate && endDate < startDate && (
-            <p className="text-sm text-red-500">
-              End date cannot be earlier than start date
-            </p>
+        {/* Submit Button */}
+        <Button
+          type="submit"
+          className="w-full flex items-center justify-center rounded-xl py-3 font-semibold text-lg shadow-md hover:shadow-lg transition-all duration-200 bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+          disabled={isSubmitting}
+        >
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+              Submitting…
+            </>
+          ) : (
+            <>
+              <Save className="w-5 h-5 mr-2" />
+              Submit
+            </>
           )}
-        </div>
-      </div>
-
-      {/* Remarks */}
-      <div className="space-y-2">
-        <Label>CCRO Remarks</Label>
-        <Textarea
-          rows={3}
-          {...register("ccroremarks")}
-          className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
-        />
-      </div>
-
-      {/* Submit Button */}
-      <Button
-        type="submit"
-        className="w-full flex items-center justify-center rounded-xl py-3 font-semibold text-lg shadow-md hover:shadow-lg transition-all duration-200 bg-gradient-to-r from-blue-600 to-indigo-600"
-        disabled={isSubmitting}
-      >
-        {isSubmitting ? (
-          <>
-            <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-            Submitting…
-          </>
-        ) : (
-          <>
-            <Save className="w-5 h-5 mr-2" />
-            Submit
-          </>
-        )}
-      </Button>
-    </form>
-  </CardContent>
-</Card>
+        </Button>
+      </form>
+       {/* ✅ Dialog for feedback */}
+             <StatusDialog
+              open={dialogOpen}
+              onOpenChange={setDialogOpen}
+              status={dialogConfig.status}
+              title={dialogConfig.title}
+              message={dialogConfig.message}
+            />
+    </CardContent>
+  </Card>
 </div>
+
+
   );
 }

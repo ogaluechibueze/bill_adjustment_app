@@ -15,6 +15,7 @@ function getMonthRange(start: Date, end: Date) {
   return months;
 }
 
+// ✅ GET all adjustments
 export async function GET() {
   try {
     const customers = await prisma.customer.findMany({
@@ -24,51 +25,67 @@ export async function GET() {
         Adjustment: {
           orderBy: { adjustmentStartDate: "desc" },
           include: {
-            items: {
-              orderBy: [{ year: "asc" }, { month: "asc" }],
-            },
+            items: { orderBy: [{ year: "asc" }, { month: "asc" }] },
           },
         },
       },
     });
 
-    return NextResponse.json(customers);
+    return NextResponse.json(customers, { status: 200 });
   } catch (error) {
-    console.error("GET /api/adjustments error:", error);
+    console.error("❌ GET /api/adjustments error:", error);
     return NextResponse.json(
-      { error: "Failed to fetch adjustments" },
+      { error: "Failed to fetch adjustments. Please try again later." },
       { status: 500 }
     );
   }
 }
 
+// ✅ POST create adjustment
 export async function POST(req: Request) {
   try {
     const session = await getServerSession(authOptions);
 
     if (!session) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json({ error: "You must be logged in." }, { status: 401 });
     }
 
     const userId = (session as any).user?.id;
     const role = (session as any).user?.role;
 
     if (!userId || role !== "CCRO") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      return NextResponse.json(
+        { error: "You do not have permission to perform this action." },
+        { status: 403 }
+      );
     }
 
     const body = await req.json();
 
+    // 🔎 Validate required fields
+    if (!body.globalAcctNo || !body.customerName) {
+      return NextResponse.json(
+        { error: "Global Account No and Customer Name are required." },
+        { status: 422 }
+      );
+    }
+
+    if (!body.adjustmentStartDate || !body.adjustmentEndDate) {
+      return NextResponse.json(
+        { error: "Adjustment start and end dates are required." },
+        { status: 422 }
+      );
+    }
+
     // 🔎 0️⃣ Check if customer already exists
     const existingCustomer = await prisma.customer.findUnique({
       where: { globalAcctNo: body.globalAcctNo },
-      include: { Adjustment: true },
     });
 
     if (existingCustomer) {
       return NextResponse.json(
         { error: `Customer with account ${body.globalAcctNo} already exists.` },
-        { status: 400 }
+        { status: 409 } // conflict
       );
     }
 
@@ -93,16 +110,12 @@ export async function POST(req: Request) {
         balanceAfterAdjustment: body.balanceAfterAdjustment
           ? parseFloat(body.balanceAfterAdjustment)
           : null,
-        adjustmentStartDate: body.adjustmentStartDate
-          ? new Date(body.adjustmentStartDate)
-          : null,
-        adjustmentEndDate: body.adjustmentEndDate
-          ? new Date(body.adjustmentEndDate)
-          : null,
+        adjustmentStartDate: new Date(body.adjustmentStartDate),
+        adjustmentEndDate: new Date(body.adjustmentEndDate),
         ccroremarks: body.ccroremarks ?? null,
         status: "Pending",
         approvalStage: "HCC",
-        createdById: Number(body.createdById),
+        createdById: Number(userId), // ✅ safer than trusting frontend
       },
       include: {
         createdBy: { select: { username: true } },
@@ -110,13 +123,6 @@ export async function POST(req: Request) {
     });
 
     // 2️⃣ Create Adjustment
-    if (!body.adjustmentStartDate || !body.adjustmentEndDate) {
-      return NextResponse.json(
-        { error: "Start and End dates are required" },
-        { status: 400 }
-      );
-    }
-
     const adjustment = await prisma.adjustment.create({
       data: {
         customerId: newCustomer.id,
@@ -136,21 +142,14 @@ export async function POST(req: Request) {
     let totalAmount = 0;
 
     for (const { month, year } of months) {
-      const consumption = await prisma.consumption.findFirst({
-        where: {
-          feederId: Number(body.feederId),
-          month,
-          year,
-        },
-      });
-
-      const tariff = await prisma.tariff.findFirst({
-        where: {
-          tariffClassId: Number(body.tariffClassId),
-          month,
-          year,
-        },
-      });
+      const [consumption, tariff] = await Promise.all([
+        prisma.consumption.findFirst({
+          where: { feederId: Number(body.feederId), month, year },
+        }),
+        prisma.tariff.findFirst({
+          where: { tariffClassId: Number(body.tariffClassId), month, year },
+        }),
+      ]);
 
       if (consumption && tariff) {
         const amount = Number(consumption.consumption) * Number(tariff.rate);
@@ -180,12 +179,20 @@ export async function POST(req: Request) {
       { customer: newCustomer, adjustmentId: adjustment.id, totalAmount },
       { status: 201 }
     );
-  } catch (error) {
-    console.error("POST /api/adjustments error:", error);
+  } catch (error: any) {
+    console.error("❌ POST /api/adjustments error:", error);
+
+    // Handle Prisma-specific errors
+    if (error.code === "P2002") {
+      return NextResponse.json(
+        { error: "Duplicate record detected (unique constraint failed)." },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
-      { error: "Failed to create adjustment" },
+      { error: "Failed to create adjustment. Please try again later." },
       { status: 500 }
     );
   }
 }
-
