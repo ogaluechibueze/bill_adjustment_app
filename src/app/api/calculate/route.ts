@@ -5,12 +5,13 @@ import { getMonthRange } from "@/utils/dateRange";
 
 export async function POST(req: Request) {
   try {
-    const { feederId, tariffClassId, startDate, endDate, defaultCapUnit, avgConsumption} =
+    const { feederId, tariffClassId, startDate, endDate, defaultCapUnit, avgConsumption,amountBilled} =
       await req.json();
 
     // ✅ Convert IDs to numbers
     const feederIdNum = Number(feederId);
     const tariffClassIdNum = Number(tariffClassId);
+    const amountBill = Number(amountBilled);
 
     if (!feederIdNum || !tariffClassIdNum || !startDate || !endDate) {
       return NextResponse.json(
@@ -21,6 +22,9 @@ export async function POST(req: Request) {
 
     const months = getMonthRange(new Date(startDate), new Date(endDate));
     let totalAdjustment = 0;
+    let totalBilledAMount = 0;
+    let totalConsumption = 0;
+
 
     for (const { month, year } of months) {
       // ✅ Always fetch tariff
@@ -36,6 +40,7 @@ export async function POST(req: Request) {
           consumptionValue = Number(defaultCapUnit);
         } else if (avgConsumption !== undefined && avgConsumption !== null) {
           consumptionValue = Number(avgConsumption);
+          totalConsumption +=consumptionValue;
         } else {
           const consumption = await prisma.consumption.findFirst({
             where: { feederId: feederIdNum, month, year },
@@ -45,10 +50,17 @@ export async function POST(req: Request) {
 
       if (consumptionValue !== null) {
         totalAdjustment += consumptionValue * Number(tariff.rate) * 1.075; // ✅ apply VAT
+        totalConsumption +=consumptionValue;
       }
+      
+      const billedAmount = await prisma.customerDetails.findFirst({
+            where: { globalAcctNo: String(amountBill)} //, month, year
+      })
+      totalBilledAMount += Number(billedAmount);
+      
     }
 
-    return NextResponse.json({ adjustmentAmount: totalAdjustment });
+    return NextResponse.json({ adjustmentAmount: totalAdjustment, totalConsumption: totalConsumption }); //,initialDebt: totalBilledAMount
   } catch (error: any) {
     console.error("❌ Error in /api/calculate:", error);
     return NextResponse.json({ error: "Server error" }, { status: 500 });

@@ -37,21 +37,37 @@ const formSchema = z.object({
   band: z.string().optional(),
   customerType: z.string().optional(),
   source: z.string().optional(),
-
+  marketerName: z.string().optional(),            
+  feedbackMarketer: z.string().optional(),        
+  pictorialEvidence: z.string().optional(),
+  premiseVisit: z.string().optional(),            
+  premiseType: z.string().optional(),
   tariffClass: z.string().optional(),
   tariffClassId: z.string().optional(),
   feederName: z.string().optional(),
   feederId: z.string().optional(),
-
+  previousReading: z.coerce.number().optional(),         
+  lastReadDate: z.coerce.number().optional(),
+  presentReading: z.coerce.number().optional(),
+  totalConsumption: z.coerce.number().optional(),
+  readingConsistent: z.string().optional(),
+  pictureReading: z.coerce.number().optional(),          
+  pictureReadingDate: z.string().optional(), 
   ticketNo: z.string().optional(),
-  initialDebt: z.coerce.number().optional(),
-  adjustmentAmount: z.coerce.number().optional(),
+  initialDebt: z.coerce.number().optional(),  //total amount billed from start date to end date
+  adjustmentAmount: z.coerce.number().optional(),  //computed expected billing amount
   adjustmentStartDate: z.string().optional(),
+  previousAdjustment: z.coerce.number().nullable().optional(),  //previous adjustment
   adjustmentEndDate: z.string().optional(),
+  adjustmentPeriod: z.coerce.number().nullable().optional(),
+  proposedAdjustment: z.coerce.number().nullable().optional(), //adjustment amount//proposed adjustment
+  finalAdjustment: z.coerce.number().nullable().optional(),     //final recommended adjustment
+  adjustmentType: z.string().optional(), //type of adjustment(debit or credit)
+  currentTotalAmount: z.coerce.number().nullable().optional(),  //total outstanding balance
+  resultantBillingAmount: z.coerce.number().nullable().optional(),  //resultant billing amount
   ccroremarks: z.string().optional(),
   avgConsumption: z.coerce.number().optional(),
-  previousReading: z.coerce.number().optional(),
-  presentReading: z.coerce.number().optional(),
+ 
 
 });
 

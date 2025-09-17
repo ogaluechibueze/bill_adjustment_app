@@ -42,6 +42,9 @@ export async function GET(req: NextRequest) {
       band: c.band,
       billStatus: c.billStatus,
       totalOutstanding: c.totalOutstanding,
+      amountBilled: c.amountBilled,
+      source: c.source,
+      ticketNo: c.ticketNo,
 
       // ✅ Feeder info
       feederId: c.feeder?.id ?? null,

@@ -6,19 +6,41 @@ import CustomerTable from "@/components/CustomerTable";
 import { Customer } from "@prisma/client";
 import Navbar from "@/components/Navbar";
 
-// ---------- SafeCustomer Type ----------
-type SafeCustomer = Omit<
+// 🔑 Safe version of Customer
+export type SafeCustomer = Omit<
   Customer,
   | "initialDebt"
   | "adjustmentAmount"
   | "balanceAfterAdjustment"
   | "adjustmentStartDate"
+  | "avgConsumption"
+  | "totalConsumption"
+  | "avgBilledAmount"
+  | "defaultCapUnit"
+  | "proposedAdjustment"
+  | "finalAdjustment"
+  | "resultantBillingAmount"
+  | "currentTotalAmount"
+  | "pictureReadingDate"
+  | "lastReadDate"
+  | "previousAdjustment"
   | "adjustmentEndDate"
   | "createdAt"
   | "updatedAt"
 > & {
   initialDebt: number | null;
   adjustmentAmount: number | null;
+  avgConsumption: number | null;
+  totalConsumption: number | null;
+  avgBilledAmount: number | null;
+  defaultCapUnit: number | null;
+  proposedAdjustment: number | null;
+  finalAdjustment: number | null;
+  resultantBillingAmount: number | null;
+  currentTotalAmount: number | null;
+  pictureReadingDate: string | null;
+  lastReadDate: string | null;
+  previousAdjustment: number | null;
   balanceAfterAdjustment: number | null;
   adjustmentStartDate: string | null;
   adjustmentEndDate: string | null;
@@ -27,13 +49,28 @@ type SafeCustomer = Omit<
   createdBy?: { username: string } | null;
 };
 
-// ---------- Utility Functions ----------
-function toSafeCustomer(item: Customer & { createdBy?: { username: string } | null }): SafeCustomer {
+// ✅ Convert Prisma → SafeCustomer
+export function toSafeCustomer(
+  item: Customer & { createdBy?: { username: string } | null }
+): SafeCustomer {
   return {
     ...item,
     initialDebt: item.initialDebt ? Number(item.initialDebt) : null,
     adjustmentAmount: item.adjustmentAmount ? Number(item.adjustmentAmount) : null,
-    balanceAfterAdjustment: item.balanceAfterAdjustment ? Number(item.balanceAfterAdjustment) : null,
+    avgConsumption: item.avgConsumption ? Number(item.avgConsumption) : null,
+    totalConsumption: item.totalConsumption ? Number(item.totalConsumption) : null,
+    avgBilledAmount: item.avgBilledAmount ? Number(item.avgBilledAmount) : null,
+    defaultCapUnit: item.defaultCapUnit ? Number(item.defaultCapUnit) : null,
+    proposedAdjustment: item.proposedAdjustment ? Number(item.proposedAdjustment) : null,
+    finalAdjustment: item.finalAdjustment ? Number(item.finalAdjustment) : null,
+    resultantBillingAmount: item.resultantBillingAmount ? Number(item.resultantBillingAmount) : null,
+    currentTotalAmount: item.currentTotalAmount ? Number(item.currentTotalAmount) : null,
+    pictureReadingDate: item.pictureReadingDate ? item.pictureReadingDate.toISOString() : null,
+    lastReadDate: item.lastReadDate  ? item.lastReadDate.toISOString() : null,
+    previousAdjustment: item.previousAdjustment ? Number(item.previousAdjustment) : null,
+    balanceAfterAdjustment: item.balanceAfterAdjustment
+      ? Number(item.balanceAfterAdjustment)
+      : null,
     adjustmentStartDate: item.adjustmentStartDate
       ? item.adjustmentStartDate.toISOString()
       : null,
@@ -45,6 +82,7 @@ function toSafeCustomer(item: Customer & { createdBy?: { username: string } | nu
     createdBy: item.createdBy ?? null,
   };
 }
+
 
 function toSafeCustomers(items: (Customer & { createdBy?: { username: string } | null })[]): SafeCustomer[] {
   return items.map(toSafeCustomer);

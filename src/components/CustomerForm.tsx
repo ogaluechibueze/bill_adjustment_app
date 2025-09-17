@@ -27,6 +27,15 @@ const AsyncCreatableSelect = dynamic(
   { ssr: false }
 );
 
+// ✅ helper for comma formatting
+  const formatNumber = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return "-";
+    return Number(value).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
 const Select = dynamic(() => import("react-select"), { ssr: false });
 
 
@@ -34,8 +43,8 @@ const Select = dynamic(() => import("react-select"), { ssr: false });
 export const formSchema = z.object({
   globalAcctNo: z.string().min(1, "Global Account No is required"),
   customerName: z.string().min(1, "Customer Name is required"),
-  region: z.string().optional(),
-  businessUnit: z.string().optional(),
+  region: z.string().optional(), //region
+  businessUnit: z.string().optional(), //business unit name
   band: z.string().optional(),
   feederName: z.string().optional(),
   feederId: z.string().optional(),
@@ -44,13 +53,25 @@ export const formSchema = z.object({
   tariffClass: z.string().optional(),
   tariffClassId: z.string().optional(),
   ticketNo: z.string().optional(),
+  premiseVisit: z.string().optional(),            
+  premiseType: z.string().optional(),
   adjustmentStartDate: z.string().optional(),
   adjustmentEndDate: z.string().optional(),
+  adjustmentPeriod: z.coerce.number().nullable().optional(), //count
+  avgConsumption: z.coerce.number().nullable().optional(), 
+  totalConsumption: z.coerce.number().nullable().optional(), //
   useDefaultCapUnit: z.boolean().optional(),
   ccroremarks: z.string().optional(),
-  initialDebt: z.coerce.number().nullable().optional(),
-adjustmentAmount: z.coerce.number().nullable().optional(),
-defaultCapUnit: z.coerce.number().nullable().optional(),
+  initialDebt: z.coerce.number().nullable().optional(),  //total amount billed from start date to end date//actual amount billed
+  currentTotalAmount: z.coerce.number().nullable().optional(),  //total outstanding balance
+  avgBilledAmount: z.coerce.number().nullable().optional(),   //monthly average billed amount
+  adjustmentAmount: z.coerce.number().nullable().optional(), //computed expected billing amount
+  proposedAdjustment: z.coerce.number().nullable().optional(), //adjustment amount//proposed adjustment
+  previousAdjustment: z.coerce.number().nullable().optional(),  //previous adjustment
+  finalAdjustment: z.coerce.number().nullable().optional(),     //final recommended adjustment
+  // totalBalance: z.coerce.number().nullable().optional(),   //balance after adjustment/balance
+  adjustmentType: z.string().optional(), //type of adjustment(debit or credit)
+  defaultCapUnit: z.coerce.number().nullable().optional(),
 });
 
 
@@ -64,6 +85,11 @@ const businessUnits = [   "GRA", "ETETE", "SOKPONBA", "EVBUOTUBU", "EVBUORIARIA"
                             "OKADA", "KOKA", "ASABA", "AKURE", "UGHELLI", "UDU", "OWO", "PTI", "IGBARA-OKE",
                             "AKOKO", "OGHARA", "EFFURUN", "OKITIPUPA"
                         ];
+const adjustment = ["CREDIT","DEBIT"]
+
+const visit = ["YES","NO"]
+
+const premise = ["RESIDENTIAL","HOTEL","EATERY","SCHOOL","FACTORY","HOSTEL","RELIGIOUS"]
 
 const bands = ["A", "B", "C", "D","E"];
   
@@ -116,6 +142,7 @@ export default function CustomerForm() {
     reset,
     watch,
     getValues,
+    setValue,
     control,
     formState: { errors, isSubmitting },
   } = useForm<CustomerFormData>({
@@ -132,8 +159,12 @@ export default function CustomerForm() {
       tariffClass: "",
       ticketNo: "",
       initialDebt: Number(""),        // ✅ matches z.coerce.number().nullable().optional()
-      adjustmentAmount: Number(""),   // ✅ same
+      adjustmentAmount: Number(""),
+      totalConsumption: Number(""),   // ✅ same
+      avgBilledAmount: Number(""),
+      avgConsumption: Number(""),
       adjustmentStartDate: "",
+      currentTotalAmount: Number(""),
       adjustmentEndDate: "",
       defaultCapUnit: Number(""),     // ✅ same
       ccroremarks: "",
@@ -142,12 +173,29 @@ export default function CustomerForm() {
 
   const initialDebt = Number(watch("initialDebt") || 0);
   const adjustmentAmount = Number(watch("adjustmentAmount") || 0);
-  const balance = initialDebt - adjustmentAmount;
-
+  const proposedAdjustment = initialDebt - adjustmentAmount;
+  const currentTotalAmount = Number(watch("currentTotalAmount") || 0);
+  const balance = currentTotalAmount - proposedAdjustment
   const startDate = watch("adjustmentStartDate");
   const endDate = watch("adjustmentEndDate");
+  const totalConsumption = Number(watch("totalConsumption")) || 0
+
+  let monthDiff = 0;
+
+if (startDate && endDate) {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  monthDiff =
+    (end.getFullYear() - start.getFullYear()) * 12 +
+    (end.getMonth() - start.getMonth()) +
+    1; 
+}
+  const avgBilledAmount = initialDebt / monthDiff || 0
   const feederId = watch("feederName");
   const type = watch("customerType"); // assuming type maps to tariffClass
+  const avgConsumption = totalConsumption / monthDiff || 0
+  const avgComputedBilledAmount = adjustmentAmount / monthDiff || 0
 
    // 🔥 Auto-calc adjustment amount when inputs change
  useEffect(() => {
@@ -174,6 +222,7 @@ export default function CustomerForm() {
   reset({
     ...getValues(),  // keep all the current field values
     adjustmentAmount: data.adjustmentAmount.toFixed(2),
+    totalConsumption: data.totalConsumption.toFixed(2),
   });
 }
     } catch (err) {
@@ -196,7 +245,12 @@ export default function CustomerForm() {
   const onSubmit: SubmitHandler<CustomerFormData> = async (data) => {
     const payload = {
       ...data,
+      proposedAdjustment: proposedAdjustment,
+      adjustmentPeriod: monthDiff,
       balanceAfterAdjustment: balance,
+      avgBilledAmount: avgBilledAmount,
+      avgConsumption: avgConsumption,
+      totalConsumption: totalConsumption,
     };
   try {
     const res = await fetch("/api/adjustments", {
@@ -300,7 +354,8 @@ const handleAccountSelect = (selected: any) => {
       tariffClassId: c.tariffClassId?.toString() ?? "",
 
       ticketNo: c.ticketNo ?? "",
-      initialDebt: c.totalOutstanding?.toString() ?? "",
+      initialDebt: c.amountBilled?.toString() ?? "",
+      currentTotalAmount: c.totalOutstanding?.toString() ?? "",
     });
   } else {
     reset((prev) => ({
@@ -391,7 +446,7 @@ const handleAccountSelect = (selected: any) => {
           {/* Dropdowns */}
           {[
             ["region", "Region", regions],
-            ["type", "Customer Type", types],
+            ["customerType", "Customer Type", types],
             ["businessUnit", "Business Unit", businessUnits],
             ["band", "Band", bands],
             ["feederName", "Feeder", feeders],
@@ -418,13 +473,79 @@ const handleAccountSelect = (selected: any) => {
             />
           ))}
 
+                <Controller
+              name ="premiseType"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-2">
+                  <Label className="font-medium text-gray-700">Type of Premise</Label>
+                  <Select
+                    options={premise.map((p) => ({ value: p, label: p }))}
+                    value={premise.map((p) => ({ value: p, label: p })).find((o) => o.value === field.value) || null}
+                    onChange={(val) => field.onChange(val?.value)}
+                  />
+                </div>
+              )}
+            />
+               <Controller
+              name ="adjustmentType"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-2">
+                  <Label className="font-medium text-gray-700">Type of Adjustment</Label>
+                  <Select
+                    options={adjustment.map((p) => ({ value: p, label: p }))}
+                    value={adjustment.map((p) => ({ value: p, label: p })).find((o) => o.value === field.value) || null}
+                    onChange={(val) => field.onChange(val?.value)}
+                  />
+                </div>
+              )}
+            />
+             <Controller
+              name ="premiseVisit"
+              control={control}
+              render={({ field }) => (
+                <div className="space-y-2">
+                  <Label className="font-medium text-gray-700">Was Premise Visited</Label>
+                  <Select
+                    options={visit.map((p) => ({ value: p, label: p }))}
+                    value={visit.map((p) => ({ value: p, label: p })).find((o) => o.value === field.value) || null}
+                    onChange={(val) => field.onChange(val?.value)}
+                  />
+                </div>
+              )}
+            />
+
           {/* Initial Debt */}
           <div className="space-y-2">
-            <Label>Initial Debt</Label>
+            <Label>Actual Billed Amount</Label>
             <Input
-              type="number"
-              {...register("initialDebt")}
-              className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+               type="text"
+              value={initialDebt ? formatNumber(Number(initialDebt)) : ""}
+              onChange={(e) => {
+                // remove commas for raw numeric value
+                const rawValue = e.target.value.replace(/,/g, "");
+                const num = rawValue ? Number(rawValue) : undefined;
+
+                setValue("initialDebt", num, { shouldValidate: true });
+              }}
+              className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+            />
+          </div>
+          {/* Initial Debt */}
+          <div className="space-y-2">
+            <Label>Total Outstanding Balance</Label>
+            <Input
+               type="text"
+              value={currentTotalAmount ? formatNumber(Number(currentTotalAmount)) : ""}
+              onChange={(e) => {
+                // remove commas for raw numeric value
+                const rawValue = e.target.value.replace(/,/g, "");
+                const num = rawValue ? Number(rawValue) : undefined;
+
+                setValue("currentTotalAmount", num, { shouldValidate: true });
+              }}
+              className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
             />
           </div>
         </div>
@@ -457,27 +578,82 @@ const handleAccountSelect = (selected: any) => {
               <Input
                 type="number"
                 {...register("defaultCapUnit", { valueAsNumber: true })}
-                className="rounded-lg bg-green-300 border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+                className="rounded-lg bg-green-300 border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 font-bold"
               />
             </div>
           )}
 
           <div className="space-y-2">
-            <Label>Adjustment Amount</Label>
+            <Label> Computed Expected Bill Amount</Label>
             <Input
-              type="number"
-              {...register("adjustmentAmount")}
-              className="rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+              type="text"
+              value={adjustmentAmount ? formatNumber(Number(adjustmentAmount)) : ""}
+              onChange={(e) => {
+                // remove commas for raw numeric value
+                const rawValue = e.target.value.replace(/,/g, "");
+                const num = rawValue ? Number(rawValue) : undefined;
+
+                setValue("adjustmentAmount", num, { shouldValidate: true });
+              }}
+              className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 font-bold"
               disabled
+            />
+          </div>
+          <div className="space-y-2">
+            <Label> Total Consumption</Label>
+            <Input
+              type="text"
+              value={totalConsumption ? formatNumber(Number(totalConsumption)) : ""}
+              onChange={(e) => {
+                // remove commas for raw numeric value
+                const rawValue = e.target.value.replace(/,/g, "");
+                const num = rawValue ? Number(rawValue) : undefined;
+
+                setValue("adjustmentAmount", num, { shouldValidate: true });
+              }}
+              className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 font-bold"
+              disabled
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Average for Actual Billed Amount</Label>
+            <Input
+              value={formatNumber(avgBilledAmount)}
+              disabled
+              className="bg-gray-100 text-gray-600 rounded-lg font-bold"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Average for Computed Billed Amount</Label>
+            <Input
+              value={formatNumber(avgComputedBilledAmount)}
+              disabled
+              className="bg-gray-100 text-gray-600 rounded-lg font-bold"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Average Consumption</Label>
+            <Input
+              value={formatNumber(avgConsumption)}
+              disabled
+              className="bg-gray-100 text-gray-600 rounded-lg font-bold"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Proposed Adjustment Amount</Label>
+            <Input
+              value={formatNumber(proposedAdjustment)}
+              disabled
+              className="bg-gray-100 text-gray-600 rounded-lg font-bold"
             />
           </div>
 
           <div className="space-y-2">
             <Label>Balance After Adjustment</Label>
             <Input
-              value={balance}
+              value={formatNumber(balance)}
               disabled
-              className="bg-gray-100 text-gray-600 rounded-lg"
+              className="bg-gray-100 text-gray-600 rounded-lg font-bold"
             />
           </div>
         </div>
@@ -506,6 +682,7 @@ const handleAccountSelect = (selected: any) => {
               min={startDate || undefined}
               max={new Date().toISOString().split("T")[0]}
             />
+           <Label className="text-green-400">Adjustment Period {monthDiff}</Label>
           </div>
         </div>
         </div>

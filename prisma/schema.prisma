@@ -61,15 +61,37 @@ model Customer {
   tariffClass             String?
   meterNumber             String?
   band                    String?
+  marketerName            String?
+  feedbackMarketer        String?
+  pictorialEvidence       String?
   feederId                Int?
   feederName              String?
   source                  String?
+  previousReading         Int?
+  presentReading          Int?
+  lastReadDate            DateTime?
+  readingConsistent       String?
+  pictureReading          Int?
+  pictureReadingDate      DateTime?
+  premiseVisit            String?
+  premiseType             String?
   ticketNo                String?
-  initialDebt             Decimal?  @db.Decimal(12,2)
-  adjustmentAmount        Decimal?  @db.Decimal(12,2)
-  balanceAfterAdjustment  Decimal?  @db.Decimal(12,2)
+  initialDebt             Decimal?  @db.Decimal(12,2) //actual amount billed
+  adjustmentAmount        Decimal?  @db.Decimal(12,2)  //total expected bill
+  avgConsumption          Decimal?  @db.Decimal(12,2)
+  totalConsumption        Decimal?  @db.Decimal(12,2)
+  avgBilledAmount         Decimal?  @db.Decimal(12,2)                      
+  balanceAfterAdjustment  Decimal?  @db.Decimal(12,2)  //adjustable Amount
   adjustmentStartDate     DateTime?
   adjustmentEndDate       DateTime?
+  adjustmentPeriod        Int?
+  defaultCapUnit          Decimal?  @db.Decimal(12,2)
+  previousAdjustment      Decimal?  @db.Decimal(12,2)
+  proposedAdjustment      Decimal?  @db.Decimal(12,2)   //adjustment amount//proposed adjustment
+  finalAdjustment         Decimal?  @db.Decimal(12,2)
+  adjustmentType          String?
+  resultantBillingAmount  Decimal?  @db.Decimal(12,2)
+  currentTotalAmount      Decimal?  @db.Decimal(12,2)
   ccroremarks             String?
   hccremarks              String?
   bmremarks               String?

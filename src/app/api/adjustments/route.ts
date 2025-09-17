@@ -89,6 +89,11 @@ export async function POST(req: Request) {
       );
     }
 
+    function parseDate(value: any): Date | null {
+      const date = new Date(value);
+      return isNaN(date.getTime()) ? null : date;
+    }
+
     // 1️⃣ Create Customer
     const newCustomer = await prisma.customer.create({
       data: {
@@ -112,10 +117,32 @@ export async function POST(req: Request) {
           : null,
         adjustmentStartDate: new Date(body.adjustmentStartDate),
         adjustmentEndDate: new Date(body.adjustmentEndDate),
+        premiseVisit: body.premiseVisit ?? null,            
+        premiseType: body.premiseType ?? null,
+        adjustmentPeriod: body.adjustmentPeriod ? parseFloat(body.adjustmentPeriod) : null,
+        avgConsumption: body.avgConsumption ? parseFloat(body.avgConsumption) : null,
+        currentTotalAmount: body.currentTotalAmount ? parseFloat(body.currentTotalAmount) : null,
+        avgBilledAmount: body.avgBilledAmount ? parseFloat(body.avgBilledAmount) : null,
+        proposedAdjustment: body.proposedAdjustment ? parseFloat(body.proposedAdjustment) : null,
+        previousAdjustment: body.previousAdjustment ? parseFloat(body.previousAdjustment) : null,
+        finalAdjustment: body.finalAdjustment ? parseFloat(body.finalAdjustment) : null,
+        adjustmentType: body.adjustmentType ?? null,
+        defaultCapUnit: body.defaultCapUnit ? parseFloat(body.defaultCapUnit) : null,
+        marketerName: body.marketerName ?? null,            
+        feedbackMarketer: body.feedbackMarketer ?? null,        
+        pictorialEvidence: body.pictorialEvidence ?? null,           
+        previousReading: body.previousReading ?? null,         
+        lastReadDate: parseDate(body.lastReadDate),
+        presentReading: body.presentReading ? parseFloat(body.presentReading) : null,
+        totalConsumption: body.totalConsumption ? parseFloat(body.totalConsumption) : null,
+        readingConsistent: body.readingConsistent ?? null,
+        pictureReading: body.pictureReading ?? null,          
+        pictureReadingDate: parseDate(body.pictureReadingDate), 
+        resultantBillingAmount: body.resultantBillingAmount ? parseFloat(body.resultantBillingAmount) : null,
         ccroremarks: body.ccroremarks ?? null,
         status: "Pending",
         approvalStage: "HCC",
-        createdById: Number(userId), // ✅ safer than trusting frontend
+        createdById: Number(userId),
       },
       include: {
         createdBy: { select: { username: true } },
