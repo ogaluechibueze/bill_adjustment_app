@@ -69,7 +69,6 @@ export const formSchema = z.object({
   proposedAdjustment: z.coerce.number().nullable().optional(), //adjustment amount//proposed adjustment
   previousAdjustment: z.coerce.number().nullable().optional(),  //previous adjustment
   finalAdjustment: z.coerce.number().nullable().optional(),     //final recommended adjustment
-  // totalBalance: z.coerce.number().nullable().optional(),   //balance after adjustment/balance
   adjustmentType: z.string().optional(), //type of adjustment(debit or credit)
   defaultCapUnit: z.coerce.number().nullable().optional(),
 });
@@ -78,7 +77,7 @@ export const formSchema = z.object({
 // ✅ Dropdown options
 const regions = ["AKURE", "ASABA", "AUCHI", "BENIN NORTH", "BENIN SOUTH", "EKITI", "ONDO", "SAPELE", "WARRI"];
 
-const types = ["NON MD UNMETERED", "NON MD METERED", "MD METERED", "MD UNMETERED"];
+const types = ["NON MD UNMETERED", "MD UNMETERED"];
 
 const businessUnits = [   "GRA", "ETETE", "SOKPONBA", "EVBUOTUBU", "EVBUORIARIA", "UGBOWO", "UROMI", "AUCHI",
                             "IKPOBA HILL", "OBIARUKU", "WARRI", "SAPELE", "ONDO", "AGBOR", "ADO-EKITI", "IDO-EKITI",
@@ -175,10 +174,12 @@ export default function CustomerForm() {
   const adjustmentAmount = Number(watch("adjustmentAmount") || 0);
   const proposedAdjustment = initialDebt - adjustmentAmount;
   const currentTotalAmount = Number(watch("currentTotalAmount") || 0);
-  const balance = currentTotalAmount - proposedAdjustment
+  const previousAdjustment  = Number(watch("previousAdjustment") || 0);
   const startDate = watch("adjustmentStartDate");
   const endDate = watch("adjustmentEndDate");
   const totalConsumption = Number(watch("totalConsumption")) || 0
+  const finalAdjustment = proposedAdjustment - previousAdjustment
+   const balance = currentTotalAmount - finalAdjustment
 
   let monthDiff = 0;
 
@@ -251,6 +252,7 @@ if (startDate && endDate) {
       avgBilledAmount: avgBilledAmount,
       avgConsumption: avgConsumption,
       totalConsumption: totalConsumption,
+      finalAdjustment: finalAdjustment,
     };
   try {
     const res = await fetch("/api/adjustments", {
@@ -356,6 +358,7 @@ const handleAccountSelect = (selected: any) => {
       ticketNo: c.ticketNo ?? "",
       initialDebt: c.amountBilled?.toString() ?? "",
       currentTotalAmount: c.totalOutstanding?.toString() ?? "",
+      previousAdjustment: c.previousAdjustment?.toString() ?? ""
     });
   } else {
     reset((prev) => ({
@@ -548,6 +551,21 @@ const handleAccountSelect = (selected: any) => {
               className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
             />
           </div>
+          <div className="space-y-2">
+            <Label>Previous Adjustment</Label>
+            <Input
+               type="text"
+              value={previousAdjustment ? formatNumber(Number(previousAdjustment )) : ""}
+              onChange={(e) => {
+                // remove commas for raw numeric value
+                const rawValue = e.target.value.replace(/,/g, "");
+                const num = rawValue ? Number(rawValue) : undefined;
+
+                setValue("currentTotalAmount", num, { shouldValidate: true });
+              }}
+              className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+            />
+          </div>
         </div>
         </div>
         {/* ✅ Adjustment Details Grid */}
@@ -643,6 +661,14 @@ const handleAccountSelect = (selected: any) => {
             <Label>Proposed Adjustment Amount</Label>
             <Input
               value={formatNumber(proposedAdjustment)}
+              disabled
+              className="bg-gray-100 text-gray-600 rounded-lg font-bold"
+            />
+          </div>
+           <div className="space-y-2">
+            <Label>Final Adjustment Amount</Label>
+            <Input
+              value={formatNumber(finalAdjustment)}
               disabled
               className="bg-gray-100 text-gray-600 rounded-lg font-bold"
             />

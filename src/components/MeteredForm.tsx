@@ -27,6 +27,15 @@ const AsyncCreatableSelect = dynamic(
 
 const Select = dynamic(() => import("react-select"), { ssr: false });
 
+// ✅ helper for comma formatting
+  const formatNumber = (value: number | null | undefined) => {
+    if (value === null || value === undefined) return "-";
+    return Number(value).toLocaleString(undefined, {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    });
+  };
+
 
 // ✅ Validation schema
 const formSchema = z.object({
@@ -61,6 +70,7 @@ const formSchema = z.object({
   adjustmentEndDate: z.string().optional(),
   adjustmentPeriod: z.coerce.number().nullable().optional(),
   proposedAdjustment: z.coerce.number().nullable().optional(), //adjustment amount//proposed adjustment
+  avgBilledAmount: z.coerce.number().nullable().optional(),   //monthly average billed amount
   finalAdjustment: z.coerce.number().nullable().optional(),     //final recommended adjustment
   adjustmentType: z.string().optional(), //type of adjustment(debit or credit)
   currentTotalAmount: z.coerce.number().nullable().optional(),  //total outstanding balance
@@ -75,7 +85,7 @@ const formSchema = z.object({
 // ✅ Dropdown options
 const regions = ["AKURE", "ASABA", "AUCHI", "BENIN NORTH", "BENIN SOUTH", "EKITI", "ONDO", "SAPELE", "WARRI"];
 
-const types = ["NON MD UNMETERED", "NON MD METERED", "MD METERED", "MD UNMETERED"];
+const types = ["NON MD METERED", "MD METERED"];
 
 const businessUnits = [   "GRA", "ETETE", "SOKPONBA", "EVBUOTUBU", "EVBUORIARIA", "UGBOWO", "UROMI", "AUCHI",
                             "IKPOBA HILL", "OBIARUKU", "WARRI", "SAPELE", "ONDO", "AGBOR", "ADO-EKITI", "IDO-EKITI",
@@ -84,6 +94,12 @@ const businessUnits = [   "GRA", "ETETE", "SOKPONBA", "EVBUOTUBU", "EVBUORIARIA"
                         ];
 
 const bands = ["A", "B", "C", "D","E"];
+
+const adjustment = ["CREDIT","DEBIT"]
+
+const visit = ["YES","NO"]
+
+const premise = ["RESIDENTIAL","HOTEL","EATERY","SCHOOL","FACTORY","HOSTEL","RELIGIOUS"]
   
 const feeders = [
                     "33 Direct","ABAVO","ABBI TOWN","ABIGBORODO","ABRAKA COMMERCIAL","ABRAKA LB","ABRAKA MD LB","ABRAKA TOWN","ABUDU-OGHADA","ADEBAYO",
@@ -152,6 +168,15 @@ export default function CustomerForm() {
       presentReading: undefined,
       tariffClass: "",
       ticketNo: "",
+      totalConsumption: Number(""),   // ✅ same
+      avgBilledAmount: Number(""),
+      avgConsumption: Number(""),
+      avgBilledAmount: Number(""),
+      avgConsumption: Number(""),
+      adjustmentStartDate: "",
+      currentTotalAmount: Number(""),
+      adjustmentStartDate: "",
+      currentTotalAmount: Number(""),
       initialDebt: Number(""),
       adjustmentAmount: Number(""),
       adjustmentStartDate: "",
@@ -168,8 +193,23 @@ export default function CustomerForm() {
   const endDate = watch("adjustmentEndDate");
   const initialDebt = Number(watch("initialDebt") || 0);
   const adjustmentAmount = Number(watch("adjustmentAmount") || 0);
-  const balance = initialDebt - adjustmentAmount;
+  // const balance = initialDebt - adjustmentAmount;
+  const proposedAdjustment = initialDebt - adjustmentAmount;
+  const currentTotalAmount = Number(watch("currentTotalAmount") || 0);
+  const balance = currentTotalAmount - proposedAdjustment
+  const totalConsumption = Number(watch("totalConsumption")) || 0
 
+  let monthDiff = 0;
+
+if (startDate && endDate) {
+  const start = new Date(startDate);
+  const end = new Date(endDate);
+
+  monthDiff =
+    (end.getFullYear() - start.getFullYear()) * 12 +
+    (end.getMonth() - start.getMonth()) +
+    1; 
+}
   // ✅ Compute consumption
   const consumption = useMemo(() => {
     return presReading > prevReading ? presReading - prevReading : 0;
@@ -183,6 +223,11 @@ export default function CustomerForm() {
       (new Date(endDate).getMonth() - new Date(startDate).getMonth());
     return months > 0 ? consumption / months : 0;
   }, [startDate, endDate, consumption]);
+
+   const avgBilledAmount = initialDebt / monthDiff || 0
+  const feederId = watch("feederName");
+  const type = watch("customerType"); // assuming type maps to tariffClass
+  const avgComputedBilledAmount = adjustmentAmount / monthDiff || 0
 
 // Keep avgConsumption updated in form state
 useEffect(() => {
@@ -211,7 +256,11 @@ useEffect(() => {
 
       if (res.ok) {
         const data = await res.json();
-        setValue("adjustmentAmount", Number(data.adjustmentAmount.toFixed(2)));
+              reset({
+          ...getValues(),  // keep all the current field values
+          adjustmentAmount: data.adjustmentAmount.toFixed(2),
+          totalConsumption: data.totalConsumption.toFixed(2),
+  });
       }
     } catch (err) {
       console.error("Error calculating adjustment:", err);
@@ -227,7 +276,15 @@ useEffect(() => {
   const onSubmit: SubmitHandler<CustomerFormData> = async (data) => {
     const payload = {
       ...data,
+      proposedAdjustment: proposedAdjustment,
+      adjustmentPeriod: monthDiff,
       balanceAfterAdjustment: balance,
+      avgBilledAmount: avgBilledAmount,
+      avgConsumption: avgConsumption,
+      totalConsumption: totalConsumption,
+      presentReading: presReading,
+      previousReading: prevReading,
+      
     };
   try {
     const res = await fetch("/api/adjustments", {
@@ -330,7 +387,8 @@ const handleAccountSelect = (selected: any) => {
       tariffClassId: c.tariffClassId?.toString() ?? "",
 
       ticketNo: c.ticketNo ?? "",
-      initialDebt: c.totalOutstanding?.toString() ?? "",
+      initialDebt: c.amountBilled?.toString() ?? "",
+      currentTotalAmount: c.totalOutstanding?.toString() ?? "",
     });
   } else {
     reset((prev) => ({
@@ -435,15 +493,80 @@ const handleAccountSelect = (selected: any) => {
               />
             ))}
 
+                    <Controller
+                          name ="premiseType"
+                          control={control}
+                          render={({ field }) => (
+                            <div className="space-y-2">
+                              <Label className="font-medium text-gray-700">Type of Premise</Label>
+                              <Select
+                                options={premise.map((p) => ({ value: p, label: p }))}
+                                value={premise.map((p) => ({ value: p, label: p })).find((o) => o.value === field.value) || null}
+                                onChange={(val) => field.onChange(val?.value)}
+                              />
+                            </div>
+                          )}
+                        />
+                           <Controller
+                          name ="adjustmentType"
+                          control={control}
+                          render={({ field }) => (
+                            <div className="space-y-2">
+                              <Label className="font-medium text-gray-700">Type of Adjustment</Label>
+                              <Select
+                                options={adjustment.map((p) => ({ value: p, label: p }))}
+                                value={adjustment.map((p) => ({ value: p, label: p })).find((o) => o.value === field.value) || null}
+                                onChange={(val) => field.onChange(val?.value)}
+                              />
+                            </div>
+                          )}
+                        />
+                         <Controller
+                          name ="premiseVisit"
+                          control={control}
+                          render={({ field }) => (
+                            <div className="space-y-2">
+                              <Label className="font-medium text-gray-700">Was Premise Visited</Label>
+                              <Select
+                                options={visit.map((p) => ({ value: p, label: p }))}
+                                value={visit.map((p) => ({ value: p, label: p })).find((o) => o.value === field.value) || null}
+                                onChange={(val) => field.onChange(val?.value)}
+                              />
+                            </div>
+                          )}
+                        />
+
             {/* Initial Debt */}
-            <div className="space-y-1">
-              <Label className="text-sm font-medium">Initial Debt</Label>
-              <Input
-                type="number"
-                {...register("initialDebt")}
-                className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
-              />
-            </div>
+             <div className="space-y-2">
+                        <Label>Actual Billed Amount</Label>
+                        <Input
+                           type="text"
+                          value={initialDebt ? formatNumber(Number(initialDebt)) : ""}
+                          onChange={(e) => {
+                            // remove commas for raw numeric value
+                            const rawValue = e.target.value.replace(/,/g, "");
+                            const num = rawValue ? Number(rawValue) : undefined;
+            
+                            setValue("initialDebt", num, { shouldValidate: true });
+                          }}
+                          className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+                        />
+                      </div>
+            <div className="space-y-2">
+                        <Label>Total Outstanding Balance</Label>
+                        <Input
+                           type="text"
+                          value={currentTotalAmount ? formatNumber(Number(currentTotalAmount)) : ""}
+                          onChange={(e) => {
+                            // remove commas for raw numeric value
+                            const rawValue = e.target.value.replace(/,/g, "");
+                            const num = rawValue ? Number(rawValue) : undefined;
+            
+                            setValue("currentTotalAmount", num, { shouldValidate: true });
+                          }}
+                          className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+                        />
+                      </div>
           </div>
         </div>
 
@@ -455,6 +578,7 @@ const handleAccountSelect = (selected: any) => {
               <Label>Previous Reading</Label>
               <Input
                 type="number"
+                
                 {...register("previousReading")}
                 className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
               />
@@ -468,7 +592,7 @@ const handleAccountSelect = (selected: any) => {
               />
             </div>
             <div className="space-y-1">
-              <Label>Consumption Value (kWh)</Label>
+              <Label>Total Consumption</Label>
               <Input
                 type="number"
                 value={consumption}
@@ -484,14 +608,63 @@ const handleAccountSelect = (selected: any) => {
                 className="text-sm bg-gray-100 text-gray-600 rounded-lg"
               />
             </div>
-            <div className="space-y-1">
-              <Label>Adjustment Amount</Label>
-              <Input
-                type="number"
-                {...register("adjustmentAmount")}
-                disabled
-                className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
-              />
+            <div className="space-y-2">
+                        <Label> Computed Expected Bill Amount</Label>
+                        <Input
+                          type="text"
+                          value={adjustmentAmount ? formatNumber(Number(adjustmentAmount)) : ""}
+                          onChange={(e) => {
+                            // remove commas for raw numeric value
+                            const rawValue = e.target.value.replace(/,/g, "");
+                            const num = rawValue ? Number(rawValue) : undefined;
+            
+                            setValue("adjustmentAmount", num, { shouldValidate: true });
+                          }}
+                          className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200 font-bold"
+                          disabled
+                        />
+                      </div>
+            <div className="space-y-2">
+                        <Label>Average for Actual Billed Amount</Label>
+                        <Input
+                          value={formatNumber(avgBilledAmount)}
+                          disabled
+                          className="bg-gray-100 text-gray-600 rounded-lg font-bold"
+                        />
+              </div>
+              <div className="space-y-2">
+                          <Label>Average for Computed Billed Amount</Label>
+                          <Input
+                            value={formatNumber(avgComputedBilledAmount)}
+                            disabled
+                            className="bg-gray-100 text-gray-600 rounded-lg font-bold"
+                          />
+                </div>
+                <div className="space-y-2">
+                            <Label>Average for Computed Billed Amount</Label>
+                            <Input
+                              value={formatNumber(avgComputedBilledAmount)}
+                              disabled
+                              className="bg-gray-100 text-gray-600 rounded-lg font-bold"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                                      <Label>Average Consumption</Label>
+                                      <Input
+                                        value={formatNumber(avgConsumption)}
+                                        disabled
+                                        className="bg-gray-100 text-gray-600 rounded-lg font-bold"
+                                      />
+                                    </div>
+             <div className="space-y-2">
+                         <Label>Proposed Adjustment Amount</Label>
+                         <Input
+                           value={formatNumber(proposedAdjustment)}
+                           disabled
+                           className="bg-gray-100 text-gray-600 rounded-lg font-bold"
+                         />
+                       </div>                       
+            
             </div>
             <div className="space-y-1">
               <Label>Balance After Adjustment</Label>
@@ -502,8 +675,6 @@ const handleAccountSelect = (selected: any) => {
               />
             </div>
           </div>
-        </div>
-
         {/* Date Range */}
         <div>
           <h3 className="text-lg font-bold text-gray-800 mb-3">📅 Adjustment Period</h3>
@@ -570,7 +741,5 @@ const handleAccountSelect = (selected: any) => {
     </CardContent>
   </Card>
 </div>
-
-
   );
 }

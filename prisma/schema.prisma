@@ -130,6 +130,7 @@ model CustomerDetails {
   feeder                  Feeder?   @relation(fields: [feederId], references: [id])
   feederName11kv          String
   feederName33kv          String?
+  previousAdjustment      Decimal?  @db.Decimal(12,2)
   source                  String?
   ticketNo                String?
   billStatus              String?
