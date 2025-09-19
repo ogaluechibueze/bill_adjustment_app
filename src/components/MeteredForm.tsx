@@ -85,15 +85,14 @@ const formSchema = z.object({
 // ✅ Dropdown options
 const regions = ["AKURE", "ASABA", "AUCHI", "BENIN NORTH", "BENIN SOUTH", "EKITI", "ONDO", "SAPELE", "WARRI"];
 
-const types = ["NON MD METERED", "MD METERED"];
+const types = ["MD","NON MD"];
 
-const businessUnits = [   "GRA", "ETETE", "SOKPONBA", "EVBUOTUBU", "EVBUORIARIA", "UGBOWO", "UROMI", "AUCHI",
-                            "IKPOBA HILL", "OBIARUKU", "WARRI", "SAPELE", "ONDO", "AGBOR", "ADO-EKITI", "IDO-EKITI",
-                            "OKADA", "KOKA", "ASABA", "AKURE", "UGHELLI", "UDU", "OWO", "PTI", "IGBARA-OKE",
-                            "AKOKO", "OGHARA", "EFFURUN", "OKITIPUPA"
-                        ];
+const businessUnits = [    "ASABA","AGBOR","AUCHI","EFFURUN","ETETE","EVBUORIARIA","EVBUOTUBU","GRA","KOKA","IKPOBA HILL",
+                            "OBIARUKU","OGHARA","OKADA","PTI","SOKPONBA","SAPELE","UGBOWO","UGHELLI","UDU",
+                            "UROMI","WARRI","ADO-EKITI","IGBARA-OKE","AKURE","OWO","IDO-EKITI","ONDO","Head Office"
+                                                  ];
 
-const bands = ["A", "B", "C", "D","E"];
+const bands = ["B","A","E","D","C"];
 
 const adjustment = ["CREDIT","DEBIT"]
 
@@ -102,36 +101,17 @@ const visit = ["YES","NO"]
 const premise = ["RESIDENTIAL","HOTEL","EATERY","SCHOOL","FACTORY","HOSTEL","RELIGIOUS"]
   
 const feeders = [
-                    "33 Direct","ABAVO","ABBI TOWN","ABIGBORODO","ABRAKA COMMERCIAL","ABRAKA LB","ABRAKA MD LB","ABRAKA TOWN","ABUDU-OGHADA","ADEBAYO",
-                    "ADEJE","ADEJE LB","ADEYEMI","ADUWAWA","AFAO (IKERE 2)","AFIESERE","AFOKPELLA","AFOR TOWN","AFRICA-HOUSE","AFUZE TOWNSHIP",
-                    "AGAGA LAYOUT","AGBARHA","AGBARHO TOWN","AGBARHO/EKU LB","AGBEDE","AGBOR TOWN","AGBOR-OBI","AGENEBODE TOWN","AGESIN-IKERE LB","AGRIC/OLOPE",
-                    "AIRPORT (COMMERCIAL)","AIRPORT COMM","AIRPORT ROAD","AJAMIMOGHA","AJEGUNLE","AJILOSUN","AKENBOR","AKPAKPAVA COMMERCIAL","AKUGBA","AKURE-COMMERCIAL",
-                    "AKWUKWU-IGBO","ALADJA","ALAGBAKA","ALIFIKEDE","AMAI TOWN","AMAI TOWN - UROMI","AMAUDO TOWN","AMUFI-COMMERCIAL","AMUKPE COMMERCIAL","AMUKPE LOCAL",
-                    "AMUKPE TOWN","ANDREW-WILSON","ANWAI","ARMY BARRACK","ARMY BARRACK (OWENA)","ARMY BARRACK AGENEBODE","ARMY BARRACK -AUCHI","ARMY BARRACKS OKITIPUPA","ARMY/IKPESHI LB","ARUE TOWNSHIP",
-                    "ARUOGBA","ASABA AIRPORT","ASABA ALLUMINIUM","ASABA -COMMERCIAL","ASABA ROAD","ASIN","ASORO","AT&P","ATANI","AUCHI TOWN",
-                    "AUCHI TOWN COMMERCIAL","AVENUE COMMERCIAL","AVIELE","AWOYEMI","AYEDUN","AYEE","AYEE/IRESE","AYOGWIRI","BASIRI","BDPA",
-                    "BENDEL ESTATE","BENIN OWENA","BIU","CABINET","CAMPUS 1","CAMPUS 2","CAMPUS 3","CBN","COLLEGE ROAD","COMMUNITY ROAD",
-                    "COSTAIN","COUNTRY HOME","Dam","DSC","DUMEZ","DUMEZ ROAD","dummy","EASTERN METAL","EBOH-COMMERCIAL","ECN",
-                    "EDJEBA","EDJOPHE","EDO-TEX","EGBA","EGOR","EGORO","EGUADAIKEN","EKAE","EKEHUAN CAMPUS","EKENWAN","EKENWAN BARRACK","EKETE","EKIADOLOR","EKPAN TOWN","EKPOMA TOWN","EKU TOWN","EKUKU-AGBOR",
-                    "ELIZADE UNIVERSITY","EL-SHADDAI","EME-ORA","EMIYE","ENERHEN LB","ENWAN","ERAA","ERINJE","ERIO LB","ESTATE","ESTATE-COMMERCIAL","ETERNIT","EVBUOABUOGUN","EVBUOTUBU","EVBUOTUBU LB","EXPRESS (AGBOR)",
-                    "EXPRESS (AKURE)","EXPRESS (UGHELLI)","EXPRESS UROMI","EXPRESS-ASABA","EZENEI","FACTORY 1","FACTORY 2","FACTORY 3","FACTORY ROAD","FARM SETTLEMENT","FED. POLY","FEDERAL SECRETARIATE COMMERCIAL","FEEDER 1",
-                    "FEEDER 2","FEEDER 3","FEEDER 4","FGGC","FLOUR MILL","FUGAR TOWN","FUPRE","GANA","GARAGE (IKERE 1)","GOVERNANCE VILLA","GOVERNOR","GOVT. HOUSE","GOVT. HOUSE ADO","GRA","GRA (WARRI)","GRA-AUCHI",
-                    "GRA-COMMERCIAL","GSM","GUINNESS FACTORY","HOUSING COMPLEX","IBILLO","IBUSA BY-PASS","IBUZOR","IDANRE ROAD","IDANRE TOWN","IDSL COMMERCIAL","IDUMUJE-UGBOKO","IFON","IGARA TOWN","IGBANKE","IGBATORO","IGBE ROAD",
-                    "IGBEDE","IGBIDI","IGBOKODA","IGEDE","IGIEDUMA COMMUNITY","IGODAN","IGUOBAZUWA","IGUOSA","IHAMA","IHOVBOR","IJAPO","IJARE/IGBARA OKE LB","IJERO TOWN","IJIGBO COMMERCIAL","IJOKA","IJU LB","IJU/ITAOGBOLU TOWNSHIP",
-                    "IKARE","IKHUENIRO","IKOGOSI LB","IKOTA","IKPOBA-HILL-COMMERCIAL","ILE-OLUJI","ILESHA ROAD","ILLAH","ILUTITUN","IMMONIAME","INDUSTRIAL COMMERCIAL","INDUSTRIALTIED TO GANA","IRESE","IRRI","IRRUA","IRUEKPEN","ISE/EMURE",
-                    "ISELE ASAGBA","ISELE-MKPITIME","Iselle Azagba","ISINKAN","ISOKO ROAD","ISOKO/KWALE LB","ISSELE MPIKTIME (NOT YET COMMISSIONED)","ISSELE-UKU","ISTH","ISUADA","IVIOGHE","IYANOMO RUBBER RESEACH","IYOWA","JAGBE","JAKPA ROAD",
-                    "JAMES HOPE COMMERCIAL","JATTU","JEDO","JEHOVAH'S WITNESS COMPLEX","KOKA COMMERCIAL","KOKO","KOKO TOWN","KOKO-LB","KOROBE","KWALE EXPRESS","KWALE TOWN","LAMPESE","LEVENTIS","LEVENTIS FARM","Limit Road Commercial","LUJOMU LB",
-                    "MARBLE HILL","MARIA GORRETI","MARKET (IGBOKODA)","MARKET ROAD (ONDO)","MARKET ROAD (WARRI)","MBH COMMERCIAL","Mc DERMOTT","MD COMMERCIAL","MEDICAL VILLAGE","MICHELLIN","MIX&BAKE -VIO -COMMERCIAL","MOSOGAR","MOSOGAR LB",
-                    "NAVAL BASE","NDC","NDC TIED TO EXPRESS UGHELLI","NDDC","NDDC IGBOKODA","NEW BENIN","NEW-AUCHI","NGC","NICOHO BARRACK","NIFOR","OBA-ILE","OBA-KEKERE","OBA-NLA","OBA-PALACE","OBAYANTOR","OBIARUKU TOWN","OBINOBA (TIED TO OBIARUKU)",
-                    "OBULUKU","ODA","ODE-AYE LB","ODO-ADO","ODOJOMU","OGBA","OGBEKNU-UMUOLO","OGBONA","Oghara Commercial","OGHARA TOWN LB","OGORODE TOWN","OGUNU ROAD","OGWA-EBELE","OGWASHI-UKU","OGWASHI-UKU COMMERCIAL","OHA","OJIRAMI DAM","OKA",
-                    "OKADA","OKE-EDA","OKE-IGBO/IFETEDO LB","OKESHA","OKHORO","Okhoro/Iyayi","OKO","OKOMU","Okotomi","OKPANAM COMMERCIAL","OKPARA INLAND","OKPE","OKPORIE","OKUREKPO","OKWE","OLAM","OLD ROAD","OLEH","OLIHA","OLOGBO","OLOMORO",
-                    "OLUKU LB","OLUKU-COMMERCIAL","OMUO LB","ONDO ROAD","ONICHA-UKU","OPOJI","OREROKPE TOWN","ORHUWHORUN ROAD","ORIE","OSADENNIS","OSUTECH","OTEFE","OTE-OKPU","OTERI","OTOVWODO/PATANI LB","OTUO","OUR LADY'S","OVA","OVA TIED TO EGOR",
-                    "OVWODOKPOKPO","OWA","OWA-ALERO","OWA-IYIBO","OWENA LB","OWENA/ILE-OLUJI LB","OWHELOGBO","OWO COMMERCIAL","OWO TOWN","OYE TOWN","OYEARUGBULEN","OYEMEKUN","PALACE","PIEDMONT","POLY","PPMC","PRODESCO","PS -COMMERCIAL","PTI ROAD",
-                    "PTI SCHOOL","RADIO BENDEL","REFINERY 1 LB","RESERVATION","RIVER SIDE","ROYAL - COMMERCIAL","SAPELE (EFFURUN) LB","SAPELE 33KV LB","SAPELE ROAD","SAPELE/WARRI ROAD","SCHOOL OF EME","SCHOOL-COMMERCIAL","SHELL ROAD","SHOPRITE (ASABA)",
-                    "SILUKO","SIO","SOUTH-IBIE","SPC","Specialist","ST. SAVIOUR","STANMARK","SUPER BRU","TEACHER TRAINING COMMERCIAL","TISCO","TOWN","TOWNSHIP","TOWNSHIP (ASABA)","TOWNSHIP-OKITIPUPA","UBEJI","UBIAJA ROAD","UBIAJA TOWN (2.5)","UBTH",
-                    "UBULU-OKITI","UDU ROAD","UGBE","UGBOR","UGBORIKOKO","UGBOROKE","UGBOWO","UJAVUN TOWN","UJEMEN -COMMERCIAL","UMUNEDE","UMUTU","UNAD","UNIBEN","UNIBEN COMMERCIAL","UNIBEN EKENWAN","UNIBEN II","UNITY FH","UNIVERSITY","UPPER LAWANI",
-                    "UPPER MISSION","UPPER OWINA","UPPER SAPELE","UPPER SILUKO","UPPER SOKPONBA","URHUOKOSA","UROMI TOWN","USELU","USEN","Uteh 1","Uteh 2","UWANHUMI","UWELU","UZERE","WARRAKE","YABA-COMMERCIAL"
-                ];
+  "ISELE-UKU","PS -COMMERCIAL","AGBOR TOWN","UMUNEDE","MARBLE HILL","AGBOR-OBI","GOVT. HOUSE","CABINET","Specialist","ISELE ASAGBA","ASABA -COMMERCIAL","JAMES HOPE","TOWNSHIP","OWA-ALERO","NULL","ANWAI","EXPRESS -ASABA","AGBEDE","OKPELLA TOWN","AGBOR IRRUA","EKPAN TOWN","REFINERY 1","SAPELE (EFFURUN)","AUCHI IKPESHI","UPPER SAPELE","ETETE","GRA-COMMERCIAL","UGBOR","EVBUOABUOGUN","KOKO","EGOR","EVBUOTUBU","EVBUORIARIA","OGHARA TOWN","EKAE","GRA","OBA-PALACE","RESERVATION","IHAMA","OKO",
+  "DUMEZ","AIRPORT (COMMERCIAL)","KOKA COMMERCIAL","ASABA ROAD","HEAD BRIDGE","IKPOBA-HILL-COMMERCIAL","UPPER MISSION","EGBA","OGWASHI-UKU","AMUFI-COMMERCIAL","GOVERNANCE VILLA","OKWE","CAMPUS 3","KWALE EXPRESS","COMMUNITY ROAD","ABRAKA","IYOWA","OLUKU","UDU ROAD","FEEDER 3","OUR LADY'S","INDUSTRIAL","BENDEL ESTATE","OGORODE TOWN","ENERHEN","FACTORY ROAD","FEEDER 4","FEEDER 2","UPPER LAWANI","SAPELE (SAPELE)","AMUKPE TOWN","GANA","ISOKO ROAD","ALADJA","EKPOMA TOWN","AGBARHA","UGBOROKE","IRUEKPEN","UGBOWO","MARKET ROAD (WARRI)",
+  "ISTH","BASIRI","EBOH-COMMERCIAL","OTOVWODO/PATANI","EDJEBA","SAPELE ROAD","COSTAIN","OGUNU ROAD","EGUADAIKEN","UBIAJA","AJILOSUN","IKERE","EXPRESS UROMI","IGEDE","AGRIC/OLOPE","OKESHA","OKE-EDA","ILESHA ROAD","ELIZADE","OWENA","OWO","IJAPO","IDANRE TOWN","IJERO TOWN","ALAGBAKA","AKURE-COMMERCIAL","ONDO","OTUN","COLLEGE ROAD","PALACE","ILAWE/ARAMOKO","FUTA","ONDO ROAD","YABA-COMMERCIAL","MARKET ROAD (ONDO)","AKURE","IGBE ROAD","MIX&BAKE -VIO -COMMERCIAL","REFINERY 2","MBH  COMMERCIAL",
+  "BDPA","Mc DERMOTT","JATTU","GARAGE (IKERE 1)","ODO-ADO","IBUZOR","ABBI TOWN","OWO TOWN","ISE/EMURE","IWOROKO/IKOLE ","ADEBAYO","AYEDUN","OYE TOWN","ASIN","ODOJOMU","OSOSO","IKARE","UGBE","OKITIPUPA","ISUADA","IFON","OKA","ILE-OLUJI","OLIHA","OKUREKPO","OBA-ILE","IJU/ITAOGBOLU TOWNSHIP","EXPRESS (AKURE)","ODA","IJOKA","IGBATORO","IJU","ISINKAN","OBAILE/REC","SOUTH-IBIE","AGENEBODE TOWN","GRA-AUCHI","WARRAKE","AVIELE","AUCHI TOWN",
+  "OWA","EXPRESS (AGBOR)","ABUDU-OGHADA","IDANRE ROAD","IGBARA OKE","ASABA ALLUMINIUM","IGARA TOWN","ENWAN","FUGAR TOWN","SPC","AFOKPELLA","IBILLO","AGBOR 6","OSADENNIS","OYEMEKUN","IGBANKE","ATANI","UBIAJA ROAD","IRRUA","UWANHUMI","UROMI TOWN","EHOR","UZEBBA","Okotomi","EGORO","EME-ORA","AGBARHO TOWN","KWALE TOWN","ISOKO/KWALE","ABRAKA TOWN","OBIARUKU TOWN","OHA","UMUTU","EKU TOWN","AGBARHO/EKU","OKPARA INLAND","NDDC","EXPRESS (UGHELLI)","ARUOGBA","UGBORIKOKO",
+  "MOSOGAR","SILUKO","IGUOBAZUWA","EKIADOLOR","SAPELE/WARRI ROAD","COUNTRY HOME","ANDREW-WILSON","IKHUENIRO","NEW-AUCHI","AMUKPE LOCAL","OGBA","IGUOSA","ADEJE","GOVERNOR","OTEFE","EXPRESS","ADUWAWA","KOKO TOWN","NEW BENIN","FEDERAL HOUSING ESTATE","EKEHUAN CAMPUS","SHELL ROAD","USEN","OKADA","OLD ROAD","FEEDER 1","PTI ROAD","ESTATE","MARIA GORRETI","UPPER SOKPONBA","ST. SAVIOUR","UPPER SILUKO","RADIO BENDEL","OLEH","UPPER OWINA","IRRI","IGBIDI","EKENWAN","EDO-TEX","OWHELOGBO",
+  "EVBUOTUBU/ASORO","DUMEZ ROAD","GRA (WARRI)","AJAMIMOGHA","AFIESERE","OTERI","ASORO","HOUSING COMPLEX","LEVENTIS","ECN","UWELU","OLOGBO","OKPORIE","AKPAKPAVA COMMERCIAL","AGAGA LAYOUT","ABAVO","OKHORO","Uteh 2","EZENEI","USELU","SIO","FGGC","ORHUWHORUN ROAD","DSC","EKETE","UBEJI","JAKPA ROAD","JEDO","AIRPORT ROAD","LAMPESE","AGHOR","IDSL","Uteh 1","WARRI","UJEMEN -COMMERCIAL","ROYAL - COMMERCIAL","MD COMMERCIAL","ESTATE-COMMERCIAL","AJEGUNLE","OKPE",
+  "ALIFIKEDE","AYOGWIRI","AWOYEMI","OTUO TOWNSHIP","UJAVUN TOWN","OREROKPE TOWN","KOROBE","0","UZERE","OLOMORO","OVA","EASTERN METAL","MICHELLIN","AFE-BABALOLA","OVWODOKPOKPO","ADO","OBULUKU","ISSELE-UKU","SCHOOL-COMMERCIAL","AMAI TOWN","IHOVBOR","ABIGBORODO","OBAYANTOR","ARMY BARRACK","UNIVERSITY","AGENEBODE","JAGBE","OGBONA","IVIOGHE","OGBEKNU-UMUOLO","GSM","OGWASHI-UKU COMMERCIAL","OLUKU-COMMERCIAL","UniBen","ARMY BARRACK (IKOYA)","STEEL COMPANY 1","STEEL COMPANY 2","NEKPENEKPEN","ERINJE/IRELE","OGWA-EBELE",
+  "CEMENT FACTORY","BETA GLASS","ONICHA-UKU","IBUSA BY-PASS","GUINNESS","PTI","ILLAH","OGHARA TEACHING HOSPITAL","OKOMU","MEDICAL VILLAGE","JEHOVAH'S WITNESS COMPLEX","STANMARK","EFFURUN","TOWNSHIP-OKITIPUPA","IGIEDUMA COMMUNITY"
+];
+
 
 type CustomerFormData = z.infer<typeof formSchema>;
 
@@ -163,7 +143,7 @@ export default function CustomerForm() {
       band: "",
       feederName: "",
       source: "",
-      customerType: "NON MD METERED",
+      customerType: "",
       previousReading: undefined,
       presentReading: undefined,
       tariffClass: "",
@@ -171,15 +151,10 @@ export default function CustomerForm() {
       totalConsumption: Number(""),   // ✅ same
       avgBilledAmount: Number(""),
       avgConsumption: Number(""),
-      avgBilledAmount: Number(""),
-      avgConsumption: Number(""),
-      adjustmentStartDate: "",
-      currentTotalAmount: Number(""),
       adjustmentStartDate: "",
       currentTotalAmount: Number(""),
       initialDebt: Number(""),
       adjustmentAmount: Number(""),
-      adjustmentStartDate: "",
       adjustmentEndDate: "",
       ccroremarks: "",
     },
@@ -190,13 +165,15 @@ export default function CustomerForm() {
   const prevReading = Number(watch("previousReading") || 0);
   const presReading = Number(watch("presentReading") || 0);
   const startDate = watch("adjustmentStartDate");
+  const previousAdjustment  = Number(watch("previousAdjustment") || 0);
   const endDate = watch("adjustmentEndDate");
   const initialDebt = Number(watch("initialDebt") || 0);
   const adjustmentAmount = Number(watch("adjustmentAmount") || 0);
   // const balance = initialDebt - adjustmentAmount;
   const proposedAdjustment = initialDebt - adjustmentAmount;
   const currentTotalAmount = Number(watch("currentTotalAmount") || 0);
-  const balance = currentTotalAmount - proposedAdjustment
+  const finalAdjustment = (Math.abs(proposedAdjustment) - previousAdjustment) || 0
+  const balance = Math.abs(currentTotalAmount - finalAdjustment) || 0
   const totalConsumption = Number(watch("totalConsumption")) || 0
 
   let monthDiff = 0;
@@ -224,10 +201,10 @@ if (startDate && endDate) {
     return months > 0 ? consumption / months : 0;
   }, [startDate, endDate, consumption]);
 
-   const avgBilledAmount = initialDebt / monthDiff || 0
+   const avgBilledAmount = (initialDebt / monthDiff) || 0
   const feederId = watch("feederName");
   const type = watch("customerType"); // assuming type maps to tariffClass
-  const avgComputedBilledAmount = adjustmentAmount / monthDiff || 0
+  const avgComputedBilledAmount = (adjustmentAmount / monthDiff) || 0
 
 // Keep avgConsumption updated in form state
 useEffect(() => {
@@ -284,6 +261,7 @@ useEffect(() => {
       totalConsumption: totalConsumption,
       presentReading: presReading,
       previousReading: prevReading,
+      previousAdjustment: previousAdjustment,
       
     };
   try {
@@ -388,6 +366,7 @@ const handleAccountSelect = (selected: any) => {
 
       ticketNo: c.ticketNo ?? "",
       initialDebt: c.amountBilled?.toString() ?? "",
+      previousAdjustment: c.previousAdjustment?.toString() ?? "",
       currentTotalAmount: c.totalOutstanding?.toString() ?? "",
     });
   } else {
@@ -567,6 +546,21 @@ const handleAccountSelect = (selected: any) => {
                           className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
                         />
                       </div>
+                      <div className="space-y-2">
+                                  <Label>Previous Adjustment</Label>
+                                  <Input
+                                     type="text"
+                                    value={previousAdjustment ? formatNumber(Number(previousAdjustment )) : ""}
+                                    onChange={(e) => {
+                                      // remove commas for raw numeric value
+                                      const rawValue = e.target.value.replace(/,/g, "");
+                                      const num = rawValue ? Number(rawValue) : undefined;
+                      
+                                      setValue("previousAdjustment", num, { shouldValidate: true });
+                                    }}
+                                    className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+                                  />
+                        </div>
           </div>
         </div>
 

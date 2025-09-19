@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
-    const query = searchParams.get("query") || "";
+    const query = searchParams.get("query")?.trim() || "";
 
     if (!query) {
       return NextResponse.json([]);
@@ -14,21 +14,16 @@ export async function GET(req: NextRequest) {
     const customers = await prisma.customerDetails.findMany({
       where: {
         globalAcctNo: {
-          contains: query,
+          startsWith: query, // ✅ indexed prefix search
         },
       },
       include: {
-        feeder: {
-          select: { id: true, name: true },
-        },
-        tariffClass: {
-          select: { id: true, name: true },
-        },
+        feeder: { select: { id: true, name: true } },
+        tariffClass: { select: { id: true, name: true } },
       },
       take: 10,
     });
 
-    // Format the response so frontend has both IDs & names
     const result = customers.map((c) => ({
       id: c.id,
       globalAcctNo: c.globalAcctNo,
@@ -41,16 +36,25 @@ export async function GET(req: NextRequest) {
       meterNumber: c.meterNumber,
       band: c.band,
       billStatus: c.billStatus,
-      totalOutstanding: c.totalOutstanding,
-      amountBilled: c.amountBilled,
+
+      // ✅ Preserve exact decimals
+            totalOutstanding: c.totalOutstanding !== null && c.totalOutstanding !== undefined 
+        ? c.totalOutstanding.toString() 
+        : "0.00",
+            amountBilled: c.amountBilled !== null && c.amountBilled !== undefined 
+        ? c.amountBilled.toString() 
+        : "0.00",
+
+      previousAdjustment: c.previousAdjustment !== null && c.previousAdjustment !== undefined 
+        ? c.previousAdjustment.toString() 
+        : "0.00",
+
       source: c.source,
       ticketNo: c.ticketNo,
 
-      // ✅ Feeder info
       feederId: c.feeder?.id ?? null,
       feederName: c.feeder?.name ?? null,
 
-      // ✅ Tariff info
       tariffClassId: c.tariffClass?.id ?? null,
       tariffClassName: c.tariffClass?.name ?? null,
     }));
