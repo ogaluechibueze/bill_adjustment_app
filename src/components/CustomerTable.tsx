@@ -122,11 +122,33 @@ const viewSchema = z.object({
   feederName: z.string().nullable().describe("Feeder Name"),
   source: z.string().nullable().describe("Source"),
   ticketNo: z.string().nullable().describe("Ticket Number"),
-  initialDebt: z.number().nullable().describe("Initial Debt"),
-  adjustmentAmount: z.number().nullable().describe("Adjustment Amount"),
-  balanceAfterAdjustment: z.number().nullable().describe("Balance After Adjustment"),
+  initialDebt: z.number().nullable().describe("Actual Billed Amount"),
+  adjustmentAmount: z.number().nullable().describe("Computed Expected Billing Amount"),
+  balanceAfterAdjustment: z.number().nullable().describe("Computed Adjustment Amount"),
   adjustmentStartDate: z.string().nullable().describe("Adjustment Start Date"),
   adjustmentEndDate: z.string().nullable().describe("Adjustment End Date"),
+  premiseVisit: z.string().nullable().describe("Was The Premise Visited"),            
+  premiseType: z.string().nullable().describe("Type of Premise"),
+  adjustmentPeriod: z.coerce.number().nullable().describe("Adjustment Period"),
+  avgConsumption: z.coerce.number().nullable().describe("Average Computed Consumption"), 
+  totalConsumption: z.coerce.number().nullable().describe("Total Computed Consumption"), //
+  currentTotalAmount: z.coerce.number().nullable().describe("Total Outstanding"),
+  avgBilledAmount: z.coerce.number().nullable().describe("Average Actual Billed Amount"),
+  proposedAdjustment: z.coerce.number().nullable().describe("Proposed Adjustment"),
+  previousAdjustment: z.coerce.number().nullable().describe("Previous Adjustment"),
+  finalAdjustment: z.coerce.number().nullable().describe("Final Adjustment"),
+  adjustmentType: z.string().nullable().describe("Adjustment Type"),
+  defaultCapUnit: z.coerce.number().nullable().describe("Default Cap Unit Used"),
+  marketerName: z.string().nullable().describe("Marketer Name"),            
+  feedbackMarketer: z.string().nullable().describe("Feedback from the Marketer"),        
+  pictorialEvidence: z.string().nullable().describe("Meter reading picture provided"),
+  tariffClass: z.string().nullable().describe("Tariff Class"),
+  previousReading: z.coerce.number().nullable().describe("Previous Reading"),         
+  lastReadDate: z.string().nullable().describe("Last Read Date"),
+  presentReading: z.coerce.number().nullable().describe("present Reading"),
+  readingConsistent: z.string().nullable().describe("is the meter reading consistent?"),
+  pictureReading: z.coerce.number().nullable().describe("Default Cap Unit Used"),          
+  pictureReadingDate: z.string().nullable().describe("date of picture reading"), 
   ccroremarks: z.string().nullable().describe("CCRO Remarks"),
   hccremarks: z.string().nullable().describe("HCC Remarks"),
   bmremarks: z.string().nullable().describe("BM Remarks"),
@@ -156,9 +178,16 @@ const CustomerTable: FC<{ data: SafeCustomer[]; role: string }> = ({ data, role 
  });
 
  // ✅ Watch form values for recalculation
-const startDate = form.watch("adjustmentStartDate");
-const endDate = form.watch("adjustmentEndDate");
 const initialDebt = form.watch("initialDebt") || 0;
+  const adjustmentAmount = form.watch("adjustmentAmount") || 0;
+  const proposedAdjustment = initialDebt - adjustmentAmount;
+  const currentTotalAmount = form.watch("currentTotalAmount") || 0;
+  const previousAdjustment  = form.watch("previousAdjustment") || 0;
+  const startDate = form.watch("adjustmentStartDate");
+  const endDate = form.watch("adjustmentEndDate");
+  const totalConsumption = form.watch("totalConsumption") || 0
+  const finalAdjustment = (Math.abs(proposedAdjustment) - previousAdjustment) || 0
+   const balance = Math.abs(currentTotalAmount - finalAdjustment) || 0
 
 // ✅ Automatically recompute adjustment amount when dates change
 useEffect(() => {
@@ -302,11 +331,11 @@ const formatDate = (value: string | Date | null | undefined) => {
                           View
                         </Button>
                       </DialogTrigger>
-                      <DialogContent className="max-w-6xl w-full max-h-[80vh] overflow-y-auto">
+                      <DialogContent className="!max-w-[1200px] !w-[1200px] h-[80vh] overflow-y-auto">
                         <DialogHeader>
                           <DialogTitle>Customer Details</DialogTitle>
                         </DialogHeader>
-                        <form className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                        <form className="grid grid-cols-1 sm:grid-cols-4 gap-4 mt-4">
                           {Object.entries(form.getValues())
                             .filter(([key]) => !["id", "updatedAt", "createdById", "createdAt"].includes(key))
                             .map(([key, value]) => {
@@ -336,6 +365,12 @@ const formatDate = (value: string | Date | null | undefined) => {
                                 "adjustmentAmount",
                                 "initialDebt",
                                 "balanceAfterAdjustment",
+                                "finalAdjustment",
+                                "proposedAdjustment",
+                                "currentTotalAmount",
+                                "totalConsumption",
+                                "balance"
+                                
                               ];
 
                               if (dateFields.includes(key)) {
@@ -346,7 +381,7 @@ const formatDate = (value: string | Date | null | undefined) => {
 
                               return (
                                 <div key={key} className="space-y-1">
-                                  <Label className="text-green-500">{label}</Label>
+                                  <Label className="text-green-500 font-bold">{label}</Label>
                                   {remarksFields.includes(key.toLowerCase()) ? (
                                     <Textarea
                                       value={String(displayValue)}

@@ -10,7 +10,7 @@
     "lint": "eslint"
   },
   "prisma": {
-    "seed": "node prisma/newCustomer.js"
+    "seed": "node prisma/seed.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",

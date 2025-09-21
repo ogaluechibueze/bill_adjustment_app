@@ -591,7 +591,7 @@ const handleAccountSelect = (selected: any) => {
                 type="number"
                 value={consumption}
                 disabled
-                className="text-sm bg-gray-100 text-gray-600 rounded-lg"
+                className="text-sm bg-gray-100 text-gray-600 rounded-lg font-bold"
               />
             </div>
             <div className="space-y-1">
@@ -599,7 +599,7 @@ const handleAccountSelect = (selected: any) => {
               <Input
                 value={avgConsumption.toFixed(2)}
                 disabled
-                className="text-sm bg-gray-100 text-gray-600 rounded-lg"
+                className="text-sm bg-gray-100 text-gray-600 rounded-lg font-bold"
               />
             </div>
             <div className="space-y-2">
@@ -665,7 +665,7 @@ const handleAccountSelect = (selected: any) => {
               <Input
                 value={balance}
                 disabled
-                className="text-sm bg-gray-100 text-gray-600 rounded-lg"
+                className="text-sm bg-gray-100 text-gray-600 rounded-lg font-bold"
               />
             </div>
           </div>
@@ -691,6 +691,7 @@ const handleAccountSelect = (selected: any) => {
                 min={startDate || undefined}
                 max={new Date().toISOString().split("T")[0]}
               />
+              <Label className="text-green-400 font-bold">Adjustment Period {monthDiff}</Label>
             </div>
           </div>
         </div>

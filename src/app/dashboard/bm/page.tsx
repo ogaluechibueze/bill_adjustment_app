@@ -6,18 +6,31 @@ import { getServerSession } from "next-auth";
 export default async function Page() {
   const session = await getServerSession(authOptions);
 
-  if (!session || (session as any).user.role !== "BM") {
-    return <div className="card">Business Manager Dashboard</div>;
+  // ✅ Allow only BM role
+  if (!session || session.user.role !== "BM") {
+    return <div className="card">Unauthorized</div>;
   }
 
-  const userRegion = (session as any).user.region;
-  const userBusinessUnit = (session as any).user.businessUnit;
+  const userRegion = session.user.region;
+  const userBusinessUnit = session.user.businessUnit;
 
+  // ✅ If BM has no region or businessUnit → show empty state
+  if (!userRegion || !userBusinessUnit) {
+    return (
+      <div className="ml-55 w-4/5 pt-12">
+        <h2 className="text-xl font-bold mb-4">Business Manager Dashboard</h2>
+        <p className="text-gray-500">No customers assigned to your region or business unit.</p>
+      </div>
+    );
+  }
+
+  // ✅ Fetch only BM-approval customers in the same region + business unit
   const items = await prisma.customer.findMany({
     where: { 
-      approvalStage: "BM", 
+      approvalStage: "BM",
       status: "Pending",
-      region: userRegion,                
+      region: userRegion,
+      businessUnit: userBusinessUnit,               
     },
     orderBy: { createdAt: "desc" },
     include: {
@@ -25,11 +38,11 @@ export default async function Page() {
     },
   });
 
-  // 🔑 Convert Prisma objects (Decimal, Date, etc.) → plain JSON
   const safeItems = JSON.parse(JSON.stringify(items));
 
   return (
     <div className="ml-55 w-4/5 pt-12"> 
+      <h2 className="text-xl font-bold mb-4">Business Manager Dashboard</h2>
       <CustomerTable data={safeItems} role="BM" />
     </div>
   );

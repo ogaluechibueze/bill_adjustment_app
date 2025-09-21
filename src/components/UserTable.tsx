@@ -24,6 +24,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Select } from "@radix-ui/react-select";
+import { Controller } from "react-hook-form";
 
 export default function UserTable({ data }: { data: any[] }) {
   const [users, setUsers] = useState(data);
@@ -33,10 +35,19 @@ export default function UserTable({ data }: { data: any[] }) {
     email: "",
     username: "",
     password: "",
-    role: "CCRO",
+    role: "",
     region: "",
     bussinessUnit: "",
   });
+
+  const regions = ["AKURE", "ASABA", "AUCHI", "BENIN NORTH", "BENIN SOUTH", "EKITI", "ONDO", "SAPELE", "WARRI"];
+
+const role = ["HCC","BM","RH","RA","IA","CIA","MD","ADMIN"]
+
+const businessUnit = [    "ASABA","AGBOR","AUCHI","EFFURUN","ETETE","EVBUORIARIA","EVBUOTUBU","GRA","KOKA","IKPOBA HILL",
+                            "OBIARUKU","OGHARA","OKADA","PTI","SOKPONBA","SAPELE","UGBOWO","UGHELLI","UDU",
+                            "UROMI","WARRI","ADO-EKITI","IGBARA-OKE","AKURE","OWO","IDO-EKITI","ONDO","Head Office"
+                                                  ];
 
   const [editingUser, setEditingUser] = useState<any | null>(null);
 
@@ -102,7 +113,7 @@ export default function UserTable({ data }: { data: any[] }) {
         email: "",
         username: "",
         password: "",
-        role: "CCRO",
+        role: "",
         region: "",
         bussinessUnit: "",
       });
@@ -165,32 +176,41 @@ export default function UserTable({ data }: { data: any[] }) {
                 value={newUser.role}
                 onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
               >
-                <option value="CCRO">CCRO</option>
-                <option value="HCC">HCC</option>
-                <option value="BM">BM</option>
-                <option value="RH">RH</option>
-                <option value="RA">RA</option>
-                <option value="IA">IA</option>
-                <option value="CIA">CIA</option>
-                <option value="MD">MD</option>
-                <option value="ADMIN">ADMIN</option>
+                {role.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
               </select>
+                            
             </div>
             <div>
               <Label>Region</Label>
-              <Input
-                value={newUser.region}
-                onChange={(e) => setNewUser({ ...newUser, region: e.target.value })}
-              />
+              <select
+                    className="border p-2 rounded w-full"
+                    value={newUser.region}
+                    onChange={(e) => setNewUser({ ...newUser, region: e.target.value })}
+                  >
+                    {regions.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
             </div>
             <div>
               <Label>Business Unit</Label>
-              <Input
+              <select
+                className="border p-2 rounded w-full"
                 value={newUser.bussinessUnit}
-                onChange={(e) =>
-                  setNewUser({ ...newUser, bussinessUnit: e.target.value })
-                }
-              />
+                onChange={(e) => setNewUser({ ...newUser, bussinessUnit: e.target.value })}
+              >
+                {businessUnit.map((r) => (
+                  <option key={r} value={r}>
+                    {r}
+                  </option>
+                ))}
+                  </select>
             </div>
             <Button onClick={createUser} className="w-full">
               {loading ? (
@@ -246,7 +266,7 @@ export default function UserTable({ data }: { data: any[] }) {
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
                     className="absolute right-2 top-2 text-gray-500"
-                  >
+                  >s
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
@@ -254,43 +274,44 @@ export default function UserTable({ data }: { data: any[] }) {
               <div>
                 <Label>Role</Label>
                 <select
-                  className="border p-2 rounded w-full"
-                  value={editingUser.role}
-                  onChange={(e) =>
-                    setEditingUser({ ...editingUser, role: e.target.value })
-                  }
-                >
-                  <option value="CCRO">CCRO</option>
-                  <option value="HCC">HCC</option>
-                  <option value="BM">BM</option>
-                  <option value="RH">RH</option>
-                  <option value="RA">RA</option>
-                  <option value="IA">IA</option>
-                  <option value="CIA">CIA</option>
-                  <option value="MD">MD</option>
-                  <option value="ADMIN">ADMIN</option>
-                </select>
+                    className="border p-2 rounded w-full"
+                    value={editingUser.role}
+                    onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
+                  >
+                    {role.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
               </div>
               <div>
                 <Label>Region</Label>
-                <Input
-                  value={editingUser.region}
-                  onChange={(e) =>
-                    setEditingUser({ ...editingUser, region: e.target.value })
-                  }
-                />
+                <select
+                    className="border p-2 rounded w-full"
+                    value={editingUser.region}
+                    onChange={(e) => setEditingUser({ ...editingUser, region: e.target.value })}
+                  >
+                    {regions.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
               </div>
               <div>
                 <Label>Business Unit</Label>
-                <Input
-                  value={editingUser.bussinessUnit}
-                  onChange={(e) =>
-                    setEditingUser({
-                      ...editingUser,
-                      bussinessUnit: e.target.value,
-                    })
-                  }
-                />
+                <select
+                    className="border p-2 rounded w-full"
+                    value={editingUser.bussinessUnit}
+                    onChange={(e) => setEditingUser({ ...editingUser, bussinessUnit: e.target.value })}
+                  >
+                    {businessUnit.map((r) => (
+                      <option key={r} value={r}>
+                        {r}
+                      </option>
+                    ))}
+                  </select>
               </div>
               <Button onClick={saveEdit} className="w-full">
                 {loading ? (

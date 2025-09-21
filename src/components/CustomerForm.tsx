@@ -75,7 +75,7 @@ export const formSchema = z.object({
 
 
 // ✅ Dropdown options
-const regions = ["AKURE", "ASABA", "AUCHI", "BENIN NORTH", "BENIN SOUTH", "EKITI", "ONDO", "SAPELE", "WARRI"];
+const regions = ["AKURE", "ASABA", "AUCHI", "BENIN NORTH", "BENIN SOUTH", "EKITI", "ONDO", "SAPELE", "WARRI","HEAD OFFICE"];
 
 const types = ["MD","NON MD"];
 
@@ -158,9 +158,19 @@ export default function CustomerForm() {
   const previousAdjustment  = Number(watch("previousAdjustment") || 0) ?? 0;
   const startDate = watch("adjustmentStartDate");
   const endDate = watch("adjustmentEndDate");
-  const totalConsumption = Number(watch("totalConsumption")) || 0
-  const finalAdjustment = (Math.abs(proposedAdjustment) - previousAdjustment) || 0
-   const balance = Math.abs(currentTotalAmount - finalAdjustment) || 0
+  const totalConsumption = Number(watch("totalConsumption")) || 0;
+
+let finalAdjustment;
+let balance;
+
+if (proposedAdjustment < 0) {
+    finalAdjustment = proposedAdjustment + previousAdjustment;
+    balance = currentTotalAmount + Math.abs(finalAdjustment);
+} else {
+    finalAdjustment = proposedAdjustment - previousAdjustment;
+    balance = currentTotalAmount - finalAdjustment;
+}
+
 
   let monthDiff = 0;
 
@@ -690,7 +700,7 @@ const handleAccountSelect = (selected: any) => {
               min={startDate || undefined}
               max={new Date().toISOString().split("T")[0]}
             />
-           <Label className="text-green-400">Adjustment Period {monthDiff}</Label>
+           <Label className="text-green-400 font-bold">Adjustment Period {monthDiff}</Label>
           </div>
         </div>
         </div>
