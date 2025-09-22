@@ -71,6 +71,7 @@ export const formSchema = z.object({
   finalAdjustment: z.coerce.number().nullable().optional(),     //final recommended adjustment
   adjustmentType: z.string().optional(), //type of adjustment(debit or credit)
   defaultCapUnit: z.coerce.number().nullable().optional(),
+  amountBilled: z.coerce.number().nullable().optional()
 });
 
 
@@ -89,7 +90,7 @@ const visit = ["YES","NO"]
 
 const premise = ["RESIDENTIAL","HOTEL","EATERY","SCHOOL","FACTORY","HOSTEL","RELIGIOUS"]
 
-const bands = ["B","A","E","D","C"];
+const band = ["B","A","E","D","C"];
   
 const feeders = [
   "ISELE-UKU","PS -COMMERCIAL","AGBOR TOWN","UMUNEDE","MARBLE HILL","AGBOR-OBI","GOVT. HOUSE","CABINET","Specialist","ISELE ASAGBA","ASABA -COMMERCIAL","JAMES HOPE","TOWNSHIP","OWA-ALERO","NULL","ANWAI","EXPRESS -ASABA","AGBEDE","OKPELLA TOWN","AGBOR IRRUA","EKPAN TOWN","REFINERY 1","SAPELE (EFFURUN)","AUCHI IKPESHI","UPPER SAPELE","ETETE","GRA-COMMERCIAL","UGBOR","EVBUOABUOGUN","KOKO","EGOR","EVBUOTUBU","EVBUORIARIA","OGHARA TOWN","EKAE","GRA","OBA-PALACE","RESERVATION","IHAMA","OKO",
@@ -148,6 +149,7 @@ export default function CustomerForm() {
       adjustmentEndDate: "",
       defaultCapUnit: Number(""),     // ✅ same
       ccroremarks: "",
+      amountBilled: Number(""),
     },
   });
 
@@ -159,6 +161,8 @@ export default function CustomerForm() {
   const startDate = watch("adjustmentStartDate");
   const endDate = watch("adjustmentEndDate");
   const totalConsumption = Number(watch("totalConsumption")) || 0;
+
+  const adjustmentType = proposedAdjustment < 0 ? "DEBIT" : "CREDIT";
 
 let finalAdjustment;
 let balance;
@@ -215,6 +219,7 @@ if (startDate && endDate) {
     ...getValues(),  // keep all the current field values
     adjustmentAmount: data.adjustmentAmount.toFixed(2),
     totalConsumption: data.totalConsumption.toFixed(2),
+    // initialDebt:     data.initialDebt.toFixed(2),
   });
 }
     } catch (err) {
@@ -245,6 +250,7 @@ if (startDate && endDate) {
       totalConsumption: totalConsumption,
       finalAdjustment: finalAdjustment,
       previousAdjustment: previousAdjustment,
+      adjustmentType: adjustmentType,
     };
   try {
     const res = await fetch("/api/adjustments", {
@@ -397,7 +403,7 @@ const handleAccountSelect = (selected: any) => {
                   }
                   isClearable
                   placeholder="🔍 Search / Enter Account Number..."
-                  className="rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
+                  className="text-sm rounded-lg border border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200"
                   formatCreateLabel={(inputValue) =>
                     `Use "${inputValue}" as new account`
                   }
@@ -443,7 +449,7 @@ const handleAccountSelect = (selected: any) => {
             ["region", "Region", regions],
             ["customerType", "Customer Type", types],
             ["businessUnit", "Business Unit", businessUnits],
-            ["band", "Band", bands],
+            ["band", "Band", band],
             ["feederName", "Feeder", feeders],
           ].map(([name, label, options]) => (
             <Controller
@@ -482,20 +488,7 @@ const handleAccountSelect = (selected: any) => {
                 </div>
               )}
             />
-               <Controller
-              name ="adjustmentType"
-              control={control}
-              render={({ field }) => (
-                <div className="space-y-2">
-                  <Label className="font-medium text-gray-700">Type of Adjustment</Label>
-                  <Select
-                    options={adjustment.map((p) => ({ value: p, label: p }))}
-                    value={adjustment.map((p) => ({ value: p, label: p })).find((o) => o.value === field.value) || null}
-                    onChange={(val) => field.onChange(val?.value)}
-                  />
-                </div>
-              )}
-            />
+            
              <Controller
               name ="premiseVisit"
               control={control}
@@ -511,6 +504,16 @@ const handleAccountSelect = (selected: any) => {
               )}
             />
 
+             <div className="space-y-1">
+          <Label>Type of Adjustment</Label>
+          <Input
+            type="text"
+            value={adjustmentType}
+            readOnly
+            className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+          />
+        </div>
+
           {/* Initial Debt */}
           <div className="space-y-2">
             <Label>Actual Billed Amount</Label>
@@ -525,6 +528,7 @@ const handleAccountSelect = (selected: any) => {
                 setValue("initialDebt", num, { shouldValidate: true });
               }}
               className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+              disabled
             />
           </div>
           {/* Initial Debt */}
@@ -541,6 +545,7 @@ const handleAccountSelect = (selected: any) => {
                 setValue("currentTotalAmount", num, { shouldValidate: true });
               }}
               className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+              disabled
             />
           </div>
           <div className="space-y-2">
@@ -556,8 +561,10 @@ const handleAccountSelect = (selected: any) => {
                 setValue("previousAdjustment", num, { shouldValidate: true });
               }}
               className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+              disabled
             />
           </div>
+         
         </div>
         </div>
         {/* ✅ Adjustment Details Grid */}

@@ -36,6 +36,7 @@ export async function GET(req: NextRequest) {
       meterNumber: c.meterNumber,
       band: c.band,
       billStatus: c.billStatus,
+      initialDebt: c.amountBilled,
 
       // ✅ Preserve exact decimals
             totalOutstanding: c.totalOutstanding !== null && c.totalOutstanding !== undefined 

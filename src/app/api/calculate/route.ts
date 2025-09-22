@@ -19,7 +19,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const months = getMonthRange(new Date(startDate), new Date(endDate));
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const months = getMonthRange(start, end);
 
     // ✅ Fetch all tariffs for the months at once
     const tariffs = await prisma.tariff.findMany({
@@ -37,16 +39,20 @@ export async function POST(req: Request) {
       },
     });
 
-    // ✅ Optionally fetch billed amount once per customer
-    let billedAmount = 0;
-    if (globalAcctNo) {
-      const billed = await prisma.customerDetails.aggregate({
-        where: { globalAcctNo: String(globalAcctNo) },
-        _sum: { amountBilled: true },
-      });
-const billedAmountDecimal: Prisma.Decimal | null = billed._sum.amountBilled;
-const billedAmount = billedAmountDecimal ? Number(billedAmountDecimal) : 0;
-    }
+    // ✅ Sum billedAmount for globalAcctNo within selected date range
+    let totalBilledAmount = 0;
+    // if (globalAcctNo) {
+    //   const billed = await prisma.customerDetails.aggregate({
+    //     where: {
+    //       globalAcctNo: String(globalAcctNo),
+    //       billDate: { gte: start, lte: end }, // 🔹 filter by date range
+    //     },
+    //     _sum: { amountBilled: true },
+    //   });
+
+    //   const billedAmountDecimal: Prisma.Decimal | null = billed._sum.amountBilled;
+    //   totalBilledAmount = billedAmountDecimal ? Number(billedAmountDecimal) : 0;
+    // }
 
     let totalAdjustment = 0;
     let totalConsumption = 0;
@@ -69,7 +75,7 @@ const billedAmount = billedAmountDecimal ? Number(billedAmountDecimal) : 0;
       }
 
       if (consumptionValue !== null) {
-        totalAdjustment += consumptionValue * Number(tariff.rate) * 1.075; // VAT
+        totalAdjustment += consumptionValue * Number(tariff.rate) * 1.075; // ✅ Apply VAT
         totalConsumption += consumptionValue;
       }
     }
@@ -77,10 +83,13 @@ const billedAmount = billedAmountDecimal ? Number(billedAmountDecimal) : 0;
     return NextResponse.json({
       adjustmentAmount: totalAdjustment,
       totalConsumption,
-      billedAmount,
+      // initialDebt: totalBilledAmount, // ✅ return billed sum as "initialDebt"
     });
   } catch (error) {
     console.error("❌ Error in /api/calculate:", error);
-    return NextResponse.json({ error: "Server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Server error" },
+      { status: 500 }
+    );
   }
 }

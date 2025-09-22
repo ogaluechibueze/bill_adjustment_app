@@ -77,6 +77,7 @@ const formSchema = z.object({
   resultantBillingAmount: z.coerce.number().nullable().optional(),  //resultant billing amount
   ccroremarks: z.string().optional(),
   avgConsumption: z.coerce.number().optional(),
+  meterNumber: z.string().min(5,"invalid meter number"),
  
 
 });
@@ -94,7 +95,7 @@ const businessUnits = [    "ASABA","AGBOR","AUCHI","EFFURUN","ETETE","EVBUORIARI
 
 const bands = ["B","A","E","D","C"];
 
-const adjustment = ["CREDIT","DEBIT"]
+
 
 const visit = ["YES","NO"]
 
@@ -143,6 +144,7 @@ export default function CustomerForm() {
       band: "",
       feederName: "",
       source: "",
+      meterNumber: "",
       customerType: "",
       previousReading: undefined,
       presentReading: undefined,
@@ -172,10 +174,20 @@ export default function CustomerForm() {
   // const balance = initialDebt - adjustmentAmount;
   const proposedAdjustment = initialDebt - adjustmentAmount;
   const currentTotalAmount = Number(watch("currentTotalAmount") || 0);
-  const finalAdjustment = (Math.abs(proposedAdjustment) - previousAdjustment) || 0
-  const balance = Math.abs(currentTotalAmount - finalAdjustment) || 0
   const totalConsumption = Number(watch("totalConsumption")) || 0
 
+  const adjustmentType = proposedAdjustment < 0 ? "DEBIT" : "CREDIT";
+
+  let finalAdjustment;
+  let balance;
+
+if (proposedAdjustment < 0) {
+    finalAdjustment = proposedAdjustment + previousAdjustment;
+    balance = currentTotalAmount + Math.abs(finalAdjustment);
+} else {
+    finalAdjustment = proposedAdjustment - previousAdjustment;
+    balance = currentTotalAmount - finalAdjustment;
+}
   let monthDiff = 0;
 
 if (startDate && endDate) {
@@ -202,9 +214,7 @@ if (startDate && endDate) {
   }, [startDate, endDate, consumption]);
 
    const avgBilledAmount = (initialDebt / monthDiff) || 0
-  const feederId = watch("feederName");
-  const type = watch("customerType"); // assuming type maps to tariffClass
-  const avgComputedBilledAmount = (adjustmentAmount / monthDiff) || 0
+   const avgComputedBilledAmount = (adjustmentAmount / monthDiff) || 0
 
 // Keep avgConsumption updated in form state
 useEffect(() => {
@@ -262,6 +272,7 @@ useEffect(() => {
       presentReading: presReading,
       previousReading: prevReading,
       previousAdjustment: previousAdjustment,
+      adjustmentType: adjustmentType,
       
     };
   try {
@@ -357,17 +368,16 @@ const handleAccountSelect = (selected: any) => {
       band: c.band ?? "",
       customerType: c.customerType ?? "",
       source: c.source ?? "",
-
-      // ✅ feeder + tariff (flattened from API)
+      meterNumber: c.meterNumber ?? "",
       feederName: c.feederName ?? "",
       feederId: c.feederId?.toString() ?? "",
       tariffClass: c.tariffClassName ?? "",
       tariffClassId: c.tariffClassId?.toString() ?? "",
 
       ticketNo: c.ticketNo ?? "",
-      initialDebt: c.amountBilled?.toString() ?? "",
-      previousAdjustment: c.previousAdjustment?.toString() ?? "",
-      currentTotalAmount: c.totalOutstanding?.toString() ?? "",
+      initialDebt: c.amountBilled?.toString() ?? "0.00",
+      previousAdjustment: c.previousAdjustment?.toString() ?? "0.00",
+      currentTotalAmount: c.totalOutstanding?.toString() ?? "0.00",
     });
   } else {
     reset((prev) => ({
@@ -429,24 +439,28 @@ const handleAccountSelect = (selected: any) => {
         <div>
           <h3 className="text-lg font-bold text-gray-800 mb-3">📋 Customer Informations</h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-            {[
-              ["customerName", "Customer Name"],
-              ["source", "Source"],
-              ["tariffClass", "Tariff Class"],
-              ["ticketNo", "Ticket Number"],
-            ].map(([k, label]) => (
-              <div key={k} className="space-y-1">
-                <Label className="text-sm font-medium">{label}</Label>
-                <Input
-                  {...register(k as keyof CustomerFormData)}
-                  className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
-                />
-              </div>
-            ))}
+           {([
+                  ["customerName", "Customer Name"],
+                  ["source", "Source"],
+                  ["tariffClass", "Tariff Class"],
+                  ["ticketNo", "Ticket Number"],
+                  ["meterNumber", "Meter Number"],
+                ] as [keyof CustomerFormData, string][]).map(([k, label]) => (
+                  <div key={k} className="space-y-1">
+                    <Label className="text-sm font-medium">{label}</Label>
+                    <Input
+                      {...register(k)}
+                      className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+                    />
+                    {errors[k] && (
+                      <p className="text-xs text-red-500">{errors[k]?.message}</p>
+                    )}
+                  </div>
+                ))}
 
             {[
               ["region", "Region", regions],
-              ["type", "Customer Type", types],
+              ["customerType", "Customer Type", types],
               ["businessUnit", "Business Unit", businessUnits],
               ["band", "Band", bands],
               ["feederName", "Feeder Name", feeders],
@@ -486,20 +500,15 @@ const handleAccountSelect = (selected: any) => {
                             </div>
                           )}
                         />
-                           <Controller
-                          name ="adjustmentType"
-                          control={control}
-                          render={({ field }) => (
-                            <div className="space-y-2">
-                              <Label className="font-medium text-gray-700">Type of Adjustment</Label>
-                              <Select
-                                options={adjustment.map((p) => ({ value: p, label: p }))}
-                                value={adjustment.map((p) => ({ value: p, label: p })).find((o) => o.value === field.value) || null}
-                                onChange={(val) => field.onChange(val?.value)}
-                              />
-                            </div>
-                          )}
-                        />
+                           <div className="space-y-1">
+                            <Label>Type of Adjustment</Label>
+                            <Input
+                              type="text"
+                              value={adjustmentType}
+                              readOnly
+                              className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+                            />
+                          </div>
                          <Controller
                           name ="premiseVisit"
                           control={control}
@@ -529,6 +538,7 @@ const handleAccountSelect = (selected: any) => {
                             setValue("initialDebt", num, { shouldValidate: true });
                           }}
                           className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+                          disabled
                         />
                       </div>
             <div className="space-y-2">
@@ -544,6 +554,7 @@ const handleAccountSelect = (selected: any) => {
                             setValue("currentTotalAmount", num, { shouldValidate: true });
                           }}
                           className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+                          disabled
                         />
                       </div>
                       <div className="space-y-2">
@@ -559,6 +570,7 @@ const handleAccountSelect = (selected: any) => {
                                       setValue("previousAdjustment", num, { shouldValidate: true });
                                     }}
                                     className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
+                                    disabled
                                   />
                         </div>
           </div>
@@ -663,7 +675,7 @@ const handleAccountSelect = (selected: any) => {
             <div className="space-y-1">
               <Label>Balance After Adjustment</Label>
               <Input
-                value={balance}
+                value={formatNumber(balance)}
                 disabled
                 className="text-sm bg-gray-100 text-gray-600 rounded-lg font-bold"
               />

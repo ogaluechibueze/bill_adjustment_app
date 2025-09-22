@@ -12,7 +12,7 @@ const __dirname = path.dirname(__filename);
 
 async function main() {
   const csvPath = path.join(__dirname, 'seed', 'EBMS.csv');
-  const BATCH_SIZE = 1000; // adjust for your system
+  const BATCH_SIZE = 10000; // adjust for your system
   let batch = [];
   let totalInserted = 0;
 
@@ -30,6 +30,7 @@ async function main() {
         customerType: row.customerType,
         meterNumber: row.meterNumber || null,
         tariffClassId: Number(row.tariffClassId),
+        band: row.band,
         feederId: Number(row.feederId),
         feederName11kv: row.feederName11kv,
         feederName33kv: row.feederName33kv,

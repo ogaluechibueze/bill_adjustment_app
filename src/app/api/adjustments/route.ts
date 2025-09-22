@@ -134,6 +134,7 @@ export async function POST(req: Request) {
         previousReading: body.previousReading ?? null,         
         lastReadDate: parseDate(body.lastReadDate),
         presentReading: body.presentReading ? parseFloat(body.presentReading) : null,
+        meterNumber: body.meterNumber ?? null,
         totalConsumption: body.totalConsumption ? parseFloat(body.totalConsumption) : null,
         readingConsistent: body.readingConsistent ?? null,
         pictureReading: body.pictureReading ?? null,          
