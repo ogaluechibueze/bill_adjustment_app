@@ -4,8 +4,12 @@ import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
 
 export default function HomePage() {
+  const [loading, setLoading] = useState(false);
+  const [load, setLoad] = useState(false);
   const { data: session, status } = useSession();
 
   // ✅ Map roles → dashboard routes
@@ -53,10 +57,11 @@ export default function HomePage() {
 
         {/* Right side */}
         <Link href={dashboardRoute}>
-          <Button
+          <Button onClick={() => setLoading(true)}
             variant="outline"
             className="bg-white/20 hover:bg-white/30 text-white border-white px-4 py-2 rounded-full"
           >
+            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
             {session ? "Go to Dashboard" : "Login"}
           </Button>
         </Link>
@@ -73,10 +78,11 @@ export default function HomePage() {
 
         <div className="mt-8 flex space-x-4">
           <Link href={dashboardRoute}>
-            <Button
+            <Button onClick={() => setLoad(true)}
               size="lg"
               className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-full shadow-lg"
             >
+              {load && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {session ? "Go to Dashboard" : "Get Started"}
             </Button>
           </Link>

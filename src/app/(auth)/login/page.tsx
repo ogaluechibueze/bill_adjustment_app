@@ -31,6 +31,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
+   const [load, setLoad] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
@@ -175,9 +176,9 @@ export default function LoginPage() {
         {loading ? "Signing in..." : "Sign In"}
       </Button>
       <Link href="/">
-      <Button className="bg-green-400">
-       {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-        {loading ? "Returning Home..." : "Return Home"}
+      <Button className="bg-green-400" onClick={() => setLoad(true)}>
+       {load && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+        {load ? "Returning Home..." : "Return Home"}
       </Button>
       </Link>
     </CardFooter>

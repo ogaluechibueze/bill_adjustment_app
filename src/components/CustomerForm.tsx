@@ -369,7 +369,7 @@ const handleAccountSelect = (selected: any) => {
 
   return (
        <div className="">
-  <Card className="max-w-4xl sm:max-w-2xl md:max-w-4xl  mx-auto mr-4 px-6 py-4 shadow-xl rounded-2xl bg-white/95 backdrop-blur">
+  <Card className="max-w-4xl sm:max-w-2xl md:max-w-6xl  mx-auto mr-4 px-6 py-4 shadow-xl rounded-2xl bg-white/95 backdrop-blur">
     {/* Header */}
     <CardHeader className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl -mx-6 -mt-6 mb-6 px-6 py-3 shadow-md">
       <CardTitle className="text-lg md:text-xl font-bold text-center text-white tracking-wide">

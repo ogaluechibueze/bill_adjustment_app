@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   FileText,
@@ -13,12 +13,18 @@ import {
   Menu,
   X,
   HomeIcon,
-  Home,
+  Loader2, // spinner
 } from "lucide-react";
 
 export default function Navbar() {
   const pathname = usePathname();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [loadingLink, setLoadingLink] = useState<string | null>(null);
+
+  // 👇 Reset loading when route changes
+  useEffect(() => {
+    setLoadingLink(null);
+  }, [pathname]);
 
   const links = [
     { href: "/dashboard/ccro", label: "Dashboard", icon: LayoutDashboard },
@@ -32,16 +38,18 @@ export default function Navbar() {
       <div className="container mx-auto flex items-center justify-end py-3 px-10 md:px-8">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2">
-        <HomeIcon className="h-6 w-6 text-white" />
-          <span className="font-bold text-lg tracking-wide">
-            HOME
-          </span>
+          <HomeIcon className="h-6 w-6 text-white" />
+          <span className="font-bold text-lg tracking-wide">HOME</span>
         </Link>
 
         {/* Desktop Nav Links */}
         <div className="hidden md:flex items-center gap-3 ml-auto">
           {links.map(({ href, label, icon: Icon }) => (
-            <Link key={href} href={href}>
+            <Link
+              key={href}
+              href={href}
+              onClick={() => setLoadingLink(href)}
+            >
               <Button
                 variant="ghost"
                 className={cn(
@@ -51,7 +59,11 @@ export default function Navbar() {
                     : "text-white hover:bg-white/20 hover:shadow"
                 )}
               >
-                <Icon className="w-4 h-4" />
+                {loadingLink === href ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Icon className="w-4 h-4" />
+                )}
                 {label}
               </Button>
             </Link>
@@ -72,7 +84,14 @@ export default function Navbar() {
         <div className="md:hidden bg-white text-gray-800 shadow-md">
           <div className="flex flex-col space-y-2 p-4">
             {links.map(({ href, label, icon: Icon }) => (
-              <Link key={href} href={href} onClick={() => setMenuOpen(false)}>
+              <Link
+                key={href}
+                href={href}
+                onClick={() => {
+                  setMenuOpen(false);
+                  setLoadingLink(href);
+                }}
+              >
                 <div
                   className={cn(
                     "flex items-center gap-3 px-4 py-2 rounded-lg transition-all",
@@ -81,7 +100,11 @@ export default function Navbar() {
                       : "hover:bg-gray-100"
                   )}
                 >
-                  <Icon className="w-5 h-5" />
+                  {loadingLink === href ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Icon className="w-5 h-5" />
+                  )}
                   {label}
                 </div>
               </Link>

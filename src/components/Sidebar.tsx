@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { LayoutDashboard, User, Menu, Home } from "lucide-react";
+import { LayoutDashboard, User, Menu, Home, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import LogoutButton from "@/components/LogoutButton";
 import Image from "next/image";
@@ -12,15 +12,16 @@ interface SidebarProps {
   role?: string;
 }
 
-const roleRoutes: Record<string, string> = {
-  CCRO: "/dashboard/ccro",
-  HCC: "/dashboard/hcc",
-  BM: "/dashboard/bm",
-  RH: "/dashboard/rh",
-  RA: "/dashboard/ra",
-  IA: "/dashboard/ia",
-  CIA: "/dashboard/cia",
-  MD: "/dashboard/md",
+// ✅ Role-specific dashboard + reports routes
+const roleRoutes: Record<string, { dashboard: string; reports: string }> = {
+  CCRO: { dashboard: "/dashboard/ccro", reports: "/dashboard/ccro/reports" },
+  HCC: { dashboard: "/dashboard/hcc", reports: "/dashboard/hcc/reports" },
+  BM: { dashboard: "/dashboard/bm", reports: "/dashboard/bm/reports" },
+  RH: { dashboard: "/dashboard/rh", reports: "/dashboard/rh/reports" },
+  RA: { dashboard: "/dashboard/ra", reports: "/dashboard/ra/reports" },
+  IA: { dashboard: "/dashboard/ia", reports: "/dashboard/ia/reports" },
+  CIA: { dashboard: "/dashboard/cia", reports: "/dashboard/cia/reports" },
+  MD: { dashboard: "/dashboard/md", reports: "/dashboard/md/reports" },
 };
 
 export default function Sidebar({ role }: SidebarProps) {
@@ -54,7 +55,7 @@ export default function Sidebar({ role }: SidebarProps) {
         ) : null}
 
         {/* Top Logo / Title */}
-        <div className="px-6 py-18 border-b border-white/20 flex flex-col items-center gap-2"> 
+        <div className="px-6 py-18 border-b border-white/20 flex flex-col items-center gap-2">
           <Image
             src="/logo2.png"
             alt="App Logo"
@@ -70,25 +71,33 @@ export default function Sidebar({ role }: SidebarProps) {
         {/* Navigation */}
         <nav className="flex-1 px-4 py-6 space-y-3">
           {allowedRoute && (
-            <Link href={allowedRoute}>
-              <Button
-                variant="ghost"
-                className="w-full justify-start gap-3 text-white hover:bg-white/20"
-              >
-                <User className="w-5 h-5" />
-                {role}
-              </Button>
-            </Link>
+            <>
+              {/* Dashboard Route */}
+              <Link href={allowedRoute.dashboard}>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-3 text-white hover:bg-white/20"
+                >
+                  <LayoutDashboard className="w-5 h-5" />
+                  Dashboard
+                </Button>
+              </Link>
+
+              {/* Reports Route */}
+              <Link href={allowedRoute.reports}>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start gap-3 text-white hover:bg-white/20"
+                >
+                  <BarChart3 className="w-5 h-5" />
+                  Reports
+                </Button>
+              </Link>
+            </>
           )}
-          <Link href="#">
-            <Button
-              variant="ghost"
-              className="w-full justify-start gap-3 text-white hover:bg-white/20"
-            >
-              📊 Reports
-            </Button>
-          </Link>
-          <Link href="#">
+
+          {/* Settings (generic, same for all) */}
+          <Link href="/settings">
             <Button
               variant="ghost"
               className="w-full justify-start gap-3 text-white hover:bg-white/20"
@@ -99,7 +108,7 @@ export default function Sidebar({ role }: SidebarProps) {
         </nav>
 
         {/* Bottom Section */}
-        <div className="px-4 py-6 border-t border-white/20 space-y-4 text-sm">
+        <div className="px-4 py-15 border-t border-white/20 space-y-4 text-sm">
           <div className="text-gray-200">
             Welcome{" "}
             <b>{session?.user?.username ?? session?.user?.email ?? "Guest"}</b>
