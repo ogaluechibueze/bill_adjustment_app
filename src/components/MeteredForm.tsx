@@ -135,7 +135,7 @@ export default function CustomerForm() {
     control,
     formState: { errors, isSubmitting },
   } = useForm<CustomerFormData>({
-    resolver: zodResolver(formSchema),
+    resolver: zodResolver(formSchema) as any,
     defaultValues: {
       globalAcctNo: "",
       customerName: "",
@@ -413,7 +413,7 @@ const handleAccountSelect = (selected: any) => {
                   cacheOptions
                   defaultOptions
                   loadOptions={loadAccounts}
-                  onChange={(val) => {
+                  onChange={(val: any) => {
                     field.onChange(val?.value);
                     handleAccountSelect(val);
                   }}
@@ -477,7 +477,7 @@ const handleAccountSelect = (selected: any) => {
                       value={toOptions(options as string[]).find(
                         (o) => o.value === field.value
                       )}
-                      onChange={(val) => field.onChange(val?.value)}
+                      onChange={(val: any) => field.onChange(val?.value)}
                       isSearchable
                       className="text-sm rounded-lg border-gray-300 focus:border-blue-500 focus:ring focus:ring-blue-200"
                     />
@@ -495,7 +495,7 @@ const handleAccountSelect = (selected: any) => {
                               <Select
                                 options={premise.map((p) => ({ value: p, label: p }))}
                                 value={premise.map((p) => ({ value: p, label: p })).find((o) => o.value === field.value) || null}
-                                onChange={(val) => field.onChange(val?.value)}
+                                onChange={(val: any) => field.onChange(val?.value)}
                               />
                             </div>
                           )}
@@ -518,7 +518,7 @@ const handleAccountSelect = (selected: any) => {
                               <Select
                                 options={visit.map((p) => ({ value: p, label: p }))}
                                 value={visit.map((p) => ({ value: p, label: p })).find((o) => o.value === field.value) || null}
-                                onChange={(val) => field.onChange(val?.value)}
+                                onChange={(val: any) => field.onChange(val?.value)}
                               />
                             </div>
                           )}

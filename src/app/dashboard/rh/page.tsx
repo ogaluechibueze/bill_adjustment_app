@@ -14,7 +14,7 @@ export default async function Page() {
   const userRegion = session.user.region;
   const userBusinessUnit = session.user.businessUnit;
 
-  // ✅ If BM has no region → show empty state
+  // ✅ If RH has no region → show empty state
   if (!userRegion) {
     return (
       <div className="ml-55 w-4/5 pt-12">

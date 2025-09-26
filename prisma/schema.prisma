@@ -65,6 +65,7 @@ model Customer {
   marketerName            String?
   feedbackMarketer        String?
   pictorialEvidence       String?
+  transformerName         String?
   feederId                Int?
   feederName              String?
   source                  String?
@@ -116,7 +117,7 @@ model Customer {
 
 model CustomerDetails {
   id                      Int       @id @default(autoincrement())
-  globalAcctNo            String    @db.VarChar(255) @unique(map: "idx_global_acct_no")
+  globalAcctNo            String    
   customerName            String
   customerAddress         String?
   region                  String?
@@ -135,9 +136,12 @@ model CustomerDetails {
   source                  String?
   ticketNo                String?
   billStatus              String?
+  billMonth               Int?
+  billYear                Int?
   transformerName         String?
   amountBilled            Decimal?  @db.Decimal(12,2)
   totalOutstanding        Decimal?  @db.Decimal(12,2)
+  previousReading         Int?
 }
 
 model Consumption {

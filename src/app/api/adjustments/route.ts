@@ -50,8 +50,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "You must be logged in." }, { status: 401 });
     }
 
-    const userId = (session as any).user?.id;
-    const role = (session as any).user?.role;
+    const userId = (session.user as { id: string | number; role: string }).id;
+    const role = (session.user as { id: string | number; role: string }).role;
 
     if (!userId || role !== "CCRO") {
       return NextResponse.json(
@@ -88,10 +88,11 @@ export async function POST(req: Request) {
         { status: 409 } // conflict
       );
     }
-
-    function parseDate(value: any): Date | null {
-      const date = new Date(value);
-      return isNaN(date.getTime()) ? null : date;
+ 
+  function parseDate(value: string | Date | null | undefined): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return isNaN(date.getTime()) ? null : date;
     }
 
     // 1️⃣ Create Customer
@@ -207,20 +208,24 @@ export async function POST(req: Request) {
       { customer: newCustomer, adjustmentId: adjustment.id, totalAmount },
       { status: 201 }
     );
-  } catch (error: any) {
-    console.error("❌ POST /api/adjustments error:", error);
+  } catch (error: unknown) {
+  console.error("❌ POST /api/adjustments error:", error);
 
-    // Handle Prisma-specific errors
-    if (error.code === "P2002") {
-      return NextResponse.json(
-        { error: "Duplicate record detected (unique constraint failed)." },
-        { status: 409 }
-      );
-    }
-
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: string }).code === "P2002"
+  ) {
     return NextResponse.json(
-      { error: "Failed to create adjustment. Please try again later." },
-      { status: 500 }
+      { error: "Duplicate record detected (unique constraint failed)." },
+      { status: 409 }
     );
   }
+
+  return NextResponse.json(
+    { error: "Failed to create adjustment. Please try again later." },
+    { status: 500 }
+  );
+}
 }

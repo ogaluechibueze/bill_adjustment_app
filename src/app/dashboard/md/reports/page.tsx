@@ -1,4 +1,5 @@
 import CustomerTable from "@/components/CustomerTable";
+import ReportTable from "@/components/ReportTable";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
@@ -27,8 +28,7 @@ export default async function Page() {
   // ✅ Fetch only BM-approval customers in the same region + business unit
   const items = await prisma.customer.findMany({
     where: { 
-      region: userRegion,
-      businessUnit: userBusinessUnit,               
+                    
     },
     orderBy: { createdAt: "desc" },
     include: {
@@ -41,7 +41,7 @@ export default async function Page() {
   return (
     <div className="ml-55 w-4/5 pt-12"> 
       <h2 className="text-xl font-bold mb-4">Business Manager Dashboard</h2>
-      <CustomerTable data={safeItems} role="MD" />
+      <ReportTable data={safeItems} role="MD" />
     </div>
   );
 }
